@@ -16,6 +16,11 @@
 3. 수집된 데이터는 DB(예: Supabase/Prisma)에 적재하고, 웹 앱은 DB에서만 읽음
 4. 개발 중 로컬에서 테스트할 때도 사내 네트워크(또는 VPN) 연결 상태에서만 실제 API 호출
 
+### 절대 커밋 금지 파일
+- **`.env.local`, `.env`, `.env.*`** — API 키·DB·시크릿. `git add -f` 도 금지. 공유는 `.env.example` (키 이름만)으로.
+- **`.claude/settings.json`, `.claude/settings.local.json`, `.claude/launch.json`** — Bash allow 리스트에 평문 토큰이 쌓일 수 있음.
+- 히스토리에 한 번 올라간 시크릿은 `force push`로 지워도 GitHub 캐시·fork 에 잔존하므로, 유출 즉시 해당 키를 **rotate** 할 것.
+
 ### 체크리스트
 - [ ] 새 매체 연동 코드를 추가할 때 IP 가드가 들어가 있는가
 - [ ] API 응답 실패 시 조용히 시뮬레이션 데이터로 폴백하는가
