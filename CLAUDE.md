@@ -43,7 +43,11 @@
   - `/api/ad-performance` — 대시보드 데이터 API
   - `/api/ad-chat` — AI 분석 스트림 API
 
+## 벤치마크 레퍼런스
+기능·UX 방향의 기준은 **Adriel**(adriel.com) — 전체 스펙을 [`docs/adriel-benchmark.md`](docs/adriel-benchmark.md) 에 정리. 위젯 시스템·리포트 모드·자동화 룰·AI 에이전트·100+ 채널 연동이 핵심 참조점.
+
 ## 작업 기본 방향
 - 기존 파일 수정 우선. 새 파일·문서 생성 최소화
 - 광고 매체 데이터는 `src/lib/ad-data.ts` 통해서만 접근
 - 실 매체 API 호출 분기 앞에는 반드시 `canFetchRealMediaData()` 가드
+- UI/UX 패턴은 Adriel 벤치마크 문서 우선 참조 (좌측 아이콘 사이드바, 위젯 기반 대시보드, 대시보드↔리포트 모드 전환 등)
