@@ -81,7 +81,7 @@ export default function AdPerformanceDashboard() {
               <KpiCard label="노출수" value={formatNumber(data.total.impressions)} />
               <KpiCard label="클릭수" value={formatNumber(data.total.clicks)} sub={`CTR ${fmtPct(data.total.ctr)}`} />
               <KpiCard label="광고비" value={fmtKRW(data.total.cost)} sub={`CPC ${fmtKRW(data.total.cpc)}`} />
-              <KpiCard label="전환수" value={formatNumber(data.total.conversions)} sub={`CVR ${fmtPct(data.total.cvr)}`} />
+              <KpiCard label="전환수(리드수)" value={formatNumber(data.total.conversions)} sub={`CVR ${fmtPct(data.total.cvr)}`} />
               <KpiCard label="CPA" value={fmtKRW(data.total.cpa)} accent="text-orange-600" />
               <KpiCard label="ROAS" value={fmtPct(data.total.roas)} accent={data.total.roas >= 200 ? 'text-emerald-600' : 'text-rose-600'} />
             </div>
@@ -100,7 +100,7 @@ export default function AdPerformanceDashboard() {
                     <Legend wrapperStyle={{ fontSize: 12 }} />
                     <Line yAxisId="left" type="monotone" dataKey="cost" name="비용" stroke="#3b82f6" strokeWidth={2} dot={{ r: 2 }} />
                     <Line yAxisId="right" type="monotone" dataKey="clicks" name="클릭" stroke="#22c55e" strokeWidth={2} dot={{ r: 2 }} />
-                    <Line yAxisId="right" type="monotone" dataKey="conversions" name="전환" stroke="#f97316" strokeWidth={2} dot={{ r: 2 }} />
+                    <Line yAxisId="right" type="monotone" dataKey="conversions" name="전환(리드수)" stroke="#f97316" strokeWidth={2} dot={{ r: 2 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -130,7 +130,7 @@ export default function AdPerformanceDashboard() {
                       <th className="py-2 px-3 text-right">CTR</th>
                       <th className="py-2 px-3 text-right">비용</th>
                       <th className="py-2 px-3 text-right">CPC</th>
-                      <th className="py-2 px-3 text-right">전환</th>
+                      <th className="py-2 px-3 text-right">전환(리드수)</th>
                       <th className="py-2 px-3 text-right">CVR</th>
                       <th className="py-2 px-3 text-right">CPA</th>
                       <th className="py-2 px-3 text-right">ROAS</th>
@@ -190,7 +190,7 @@ export default function AdPerformanceDashboard() {
                       <th className="py-2 px-3">채널</th>
                       <th className="py-2 px-3">상태</th>
                       <th className="py-2 px-3 text-right">비용</th>
-                      <th className="py-2 px-3 text-right">전환</th>
+                      <th className="py-2 px-3 text-right">전환(리드수)</th>
                       <th className="py-2 px-3 text-right">CPA</th>
                       <th className="py-2 px-3 text-right">ROAS</th>
                     </tr>

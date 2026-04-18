@@ -165,7 +165,7 @@ function KpiPage({ data }: { data: DashboardData }) {
         <KpiCard label="CTR" value={fmtPct(data.total.ctr)} sparkKey="ctr" daily={data.daily} color="#06b6d4" />
         <KpiCard label="CPC" value={fmtKRW(data.total.cpc)} sparkKey="cpc" daily={data.daily} color="#0ea5e9" />
         <KpiCard label="CPM" value={fmtKRWShort(data.total.cpm)} daily={data.daily} color="#10b981" />
-        <KpiCard label="전환" value={fmtNumShort(data.total.conversions)} sparkKey="conversions" daily={data.daily} color="#22c55e" />
+        <KpiCard label="전환(리드수)" value={fmtNumShort(data.total.conversions)} sparkKey="conversions" daily={data.daily} color="#22c55e" />
         <KpiCard label="CVR" value={fmtPct(data.total.cvr)} sparkKey="cvr" daily={data.daily} color="#84cc16" />
         <KpiCard label="CPA" value={fmtKRW(data.total.cpa)} sparkKey="cpa" daily={data.daily} color="#f97316" />
         <KpiCard label="ROAS" value={fmtPct(data.total.roas)} daily={data.daily} color="#ef4444" />
@@ -182,7 +182,7 @@ function KpiPage({ data }: { data: DashboardData }) {
               <th className="py-2 px-3 text-right">클릭</th>
               <th className="py-2 px-3 text-right">CTR</th>
               <th className="py-2 px-3 text-right">CPC</th>
-              <th className="py-2 px-3 text-right">전환</th>
+              <th className="py-2 px-3 text-right">전환(리드수)</th>
               <th className="py-2 px-3 text-right">CPA</th>
               <th className="py-2 px-3 text-right">ROAS</th>
             </tr>
@@ -339,14 +339,14 @@ export default function ReportBuilderPage() {
     rows.push(['리포트 제목', title]);
     rows.push(['기간', `${startDate} ~ ${endDate}`]);
     rows.push([]);
-    rows.push(['핵심 지표', '노출', '클릭', 'CTR', '광고비', 'CPC', 'CPM', '전환', 'CVR', 'CPA', 'ROAS']);
+    rows.push(['핵심 지표', '노출', '클릭', 'CTR', '광고비', 'CPC', 'CPM', '전환(리드수)', 'CVR', 'CPA', 'ROAS']);
     rows.push([
       '전체', data.total.impressions, data.total.clicks, data.total.ctr.toFixed(2),
       data.total.cost, data.total.cpc.toFixed(0), data.total.cpm.toFixed(0),
       data.total.conversions, data.total.cvr.toFixed(2), data.total.cpa.toFixed(0), data.total.roas.toFixed(2),
     ]);
     rows.push([]);
-    rows.push(['채널별', '노출', '클릭', 'CTR', '광고비', 'CPC', '전환', 'CPA', 'ROAS']);
+    rows.push(['채널별', '노출', '클릭', 'CTR', '광고비', 'CPC', '전환(리드수)', 'CPA', 'ROAS']);
     data.byChannel.forEach((c) => rows.push([
       c.label, c.impressions, c.clicks, c.ctr.toFixed(2),
       c.cost, c.cpc.toFixed(0), c.conversions, c.cpa.toFixed(0), c.roas.toFixed(2),

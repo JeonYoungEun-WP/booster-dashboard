@@ -102,7 +102,7 @@ function CreativeCard({ c }: { c: CreativePerformance }) {
             <p className="font-semibold">{fmtPct(c.ctr)}</p>
           </div>
           <div>
-            <p className="text-muted-foreground">전환</p>
+            <p className="text-muted-foreground">전환(리드수)</p>
             <p className="font-semibold">{formatNumber(c.conversions)}</p>
           </div>
           <div>
@@ -256,7 +256,7 @@ export default function CreativesPage() {
               <option value="impressions-desc">노출 ↓</option>
               <option value="clicks-desc">클릭 ↓</option>
               <option value="ctr-desc">CTR ↓</option>
-              <option value="conversions-desc">전환 ↓</option>
+              <option value="conversions-desc">전환(리드수) ↓</option>
               <option value="roas-desc">ROAS ↓</option>
               <option value="cpa-asc">CPA ↑(낮은순)</option>
             </select>
@@ -349,7 +349,7 @@ export default function CreativesPage() {
                   <th className="py-2 px-3 text-right cursor-pointer" onClick={() => handleSort('clicks')}>클릭{sortIcon('clicks')}</th>
                   <th className="py-2 px-3 text-right cursor-pointer" onClick={() => handleSort('ctr')}>CTR{sortIcon('ctr')}</th>
                   <th className="py-2 px-3 text-right cursor-pointer" onClick={() => handleSort('cost')}>비용{sortIcon('cost')}</th>
-                  <th className="py-2 px-3 text-right cursor-pointer" onClick={() => handleSort('conversions')}>전환{sortIcon('conversions')}</th>
+                  <th className="py-2 px-3 text-right cursor-pointer" onClick={() => handleSort('conversions')}>전환(리드수){sortIcon('conversions')}</th>
                   <th className="py-2 px-3 text-right cursor-pointer" onClick={() => handleSort('cpa')}>CPA{sortIcon('cpa')}</th>
                   <th className="py-2 px-3 text-right cursor-pointer" onClick={() => handleSort('roas')}>ROAS{sortIcon('roas')}</th>
                 </tr>
