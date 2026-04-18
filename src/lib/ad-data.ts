@@ -18,13 +18,15 @@
 
 import { canCallMediaApi, isServerOnAllowedIp } from './ip-guard'
 
-export type AdChannel = 'google' | 'meta' | 'naver' | 'kakao'
+export type AdChannel = 'google' | 'meta' | 'naver' | 'kakao' | 'tiktok' | 'karrot'
 
 export const CHANNEL_LABEL: Record<AdChannel, string> = {
   google: 'Google Ads',
   meta: 'Meta Ads',
   naver: '네이버 검색광고',
   kakao: '카카오모먼트',
+  tiktok: 'TikTok Ads',
+  karrot: '당근 비즈',
 }
 
 export const CHANNEL_COLOR: Record<AdChannel, string> = {
@@ -32,6 +34,8 @@ export const CHANNEL_COLOR: Record<AdChannel, string> = {
   meta: '#1877F2',
   naver: '#03C75A',
   kakao: '#FEE500',
+  tiktok: '#111111',
+  karrot: '#FF7E36',
 }
 
 export interface AdMetrics {
@@ -123,6 +127,45 @@ export function getIntegrationStatus(): IntegrationStatus[] {
       description: 'Kakao Moment API (디스플레이/메시지)',
       lastSyncAt: new Date().toISOString(),
     },
+    {
+      channel: 'tiktok',
+      label: 'TikTok Ads',
+      connected: ipOk && !!process.env.TIKTOK_ADS_ACCESS_TOKEN && !!process.env.TIKTOK_ADS_ADVERTISER_ID,
+      description: 'TikTok for Business API (Spark·InFeed·TopView)',
+      lastSyncAt: new Date().toISOString(),
+    },
+    {
+      channel: 'karrot',
+      label: '당근 비즈',
+      connected: ipOk && !!process.env.DANGGEUN_BIZ_ACCESS_TOKEN && !!process.env.DANGGEUN_BIZ_ACCOUNT_ID,
+      description: '당근 비즈 파트너 API (또는 CSV 업로드)',
+      lastSyncAt: new Date().toISOString(),
+    },
+  ]
+}
+
+/** GA4 등 매체 아닌 분석 도구 연결 상태 (허가 IP 제약 대상 아님) */
+export interface AnalyticsIntegrationStatus {
+  key: 'ga4'
+  label: string
+  connected: boolean
+  description: string
+  lastSyncAt?: string
+}
+
+export function getAnalyticsIntegrationStatus(): AnalyticsIntegrationStatus[] {
+  const ga4 = !!process.env.GA4_PROPERTY_ID && (
+    !!process.env.GA4_SERVICE_ACCOUNT_KEY ||
+    (!!process.env.GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID && !!process.env.GCP_SERVICE_ACCOUNT_EMAIL)
+  )
+  return [
+    {
+      key: 'ga4',
+      label: 'Google Analytics 4',
+      connected: ga4,
+      description: 'GA4 Data API (채널 그룹·UTM 퍼포먼스 데이터)',
+      lastSyncAt: new Date().toISOString(),
+    },
   ]
 }
 
@@ -189,6 +232,8 @@ const CHANNEL_PROFILE: Record<AdChannel, {
   meta:   { impMin: 30000, impMax: 60000, ctrMin: 1.0, ctrMax: 2.5, cpcMin: 220, cpcMax: 650, cvrMin: 1.0, cvrMax: 2.4, aov: 250000 },
   naver:  { impMin: 12000, impMax: 25000, ctrMin: 3.0, ctrMax: 6.0, cpcMin: 400, cpcMax: 1200, cvrMin: 2.0, cvrMax: 4.0, aov: 320000 },
   kakao:  { impMin: 15000, impMax: 32000, ctrMin: 0.8, ctrMax: 2.0, cpcMin: 180, cpcMax: 520, cvrMin: 0.8, cvrMax: 2.0, aov: 220000 },
+  tiktok: { impMin: 45000, impMax: 95000, ctrMin: 0.8, ctrMax: 2.2, cpcMin: 180, cpcMax: 550, cvrMin: 0.6, cvrMax: 1.8, aov: 180000 },
+  karrot: { impMin: 8000,  impMax: 18000, ctrMin: 1.2, ctrMax: 3.0, cpcMin: 150, cpcMax: 450, cvrMin: 1.5, cvrMax: 3.5, aov: 210000 },
 }
 
 function simulateChannelDay(channel: AdChannel, date: string): ChannelPerformance {
@@ -224,7 +269,7 @@ export interface FetchOptions {
   channels?: AdChannel[]
 }
 
-const ALL_CHANNELS: AdChannel[] = ['google', 'meta', 'naver', 'kakao']
+const ALL_CHANNELS: AdChannel[] = ['google', 'meta', 'naver', 'kakao', 'tiktok', 'karrot']
 
 /** 기간 합계 - 채널별 */
 export async function getChannelSummary(opts: FetchOptions): Promise<ChannelPerformance[]> {
@@ -270,14 +315,14 @@ export async function getDailyTrend(opts: FetchOptions): Promise<DailyPerformanc
 }
 
 /** 일자별 - 채널별 분리 (스택 차트용) */
-export async function getDailyByChannel(opts: FetchOptions): Promise<{ date: string; google: number; meta: number; naver: number; kakao: number; metric: 'cost' | 'clicks' | 'conversions' }[]> {
+export async function getDailyByChannel(opts: FetchOptions): Promise<{ date: string; google: number; meta: number; naver: number; kakao: number; tiktok: number; karrot: number; metric: 'cost' | 'clicks' | 'conversions' }[]> {
   const dates = dateRange(opts.startDate, opts.endDate)
   return dates.map((date) => {
     const row: Record<string, number | string> = { date, metric: 'cost' }
     for (const ch of ALL_CHANNELS) {
       row[ch] = simulateChannelDay(ch, date).cost
     }
-    return row as unknown as { date: string; google: number; meta: number; naver: number; kakao: number; metric: 'cost' }
+    return row as unknown as { date: string; google: number; meta: number; naver: number; kakao: number; tiktok: number; karrot: number; metric: 'cost' }
   })
 }
 
@@ -306,6 +351,17 @@ const CAMPAIGN_TEMPLATES: Record<AdChannel, string[]> = {
     '디스플레이_리타겟팅',
     '비즈보드_B2B타겟',
     '메시지광고_고객관계관리',
+  ],
+  tiktok: [
+    'Spark_피드_바이럴_v1',
+    'TopView_런칭_브랜드인지',
+    'InFeed_리타겟팅_방문자',
+    'Spark_크리에이터_컬래버',
+  ],
+  karrot: [
+    '지역기반_서울_B2B워크숍',
+    '당근비즈_프로필노출',
+    '당근광고_리타겟팅',
   ],
 }
 
@@ -345,6 +401,17 @@ const CREATIVE_TEMPLATES: Record<AdChannel, CreativeTemplate[]> = {
     { name: '비즈보드_상단_v1', format: 'image', headline: 'B2B 마케팅, 부스터로', description: '카톡에서 시작', color: '#FEE500' },
     { name: '디스플레이_리타겟팅_300x250', format: 'image', headline: '체험 기회를 놓치지 마세요', description: '14일 무료', color: '#FFC700' },
     { name: '메시지광고_뉴스레터_v3', format: 'text', headline: '월간 마케팅 인사이트', description: '구독자 한정 자료', color: '#FFEB00' },
+  ],
+  tiktok: [
+    { name: 'Spark_피드_15s_v1', format: 'video', headline: '바이럴 마케팅 솔루션', description: '15초로 보는 핵심', color: '#FF0050' },
+    { name: 'TopView_런칭_6s', format: 'video', headline: '위픽부스터', description: '런칭 이벤트', color: '#000000' },
+    { name: 'InFeed_고객후기_v2', format: 'video', headline: '"월 리드 3배"', description: '진짜 고객 후기', color: '#25F4EE' },
+    { name: 'Spark_크리에이터_컬래버', format: 'video', headline: '크리에이터와 함께', description: '실제 사용 영상', color: '#FF0050' },
+  ],
+  karrot: [
+    { name: '지역광고_서울_B2B', format: 'image', headline: '내 동네 B2B 마케팅 솔루션', description: '무료 체험', color: '#FF7E36' },
+    { name: '비즈프로필_전체', format: 'image', headline: '위픽부스터 비즈프로필', description: '신뢰할 수 있는 파트너', color: '#FF9359' },
+    { name: '당근광고_리타겟팅', format: 'image', headline: '다시 만나요', description: '14일 무료 체험 혜택', color: '#FF5E17' },
   ],
 }
 

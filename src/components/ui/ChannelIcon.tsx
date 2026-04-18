@@ -48,6 +48,22 @@ export function ChannelIcon({ channel, size = 16, className }: Props) {
           <path fill="#191919" d="M24 11c-8 0-14 5-14 11 0 4 3 7 7 9l-1 5c0 1 1 1 2 1l6-4h1c7 0 13-5 13-11S32 11 24 11z"/>
         </svg>
       )
+    case 'tiktok':
+      return (
+        <svg width={s} height={s} viewBox="0 0 48 48" className={className} aria-label="TikTok" role="img">
+          <rect width="48" height="48" rx="8" fill="#000"/>
+          <path fill="#FF004F" d="M29 10h-5v20c0 2-2 4-4 4s-4-2-4-4 2-4 4-4v-5c-5 0-10 4-10 9s5 9 10 9 9-4 9-9V20c2 1 4 2 7 2v-5c-4 0-7-3-7-7z"/>
+          <path fill="#25F4EE" d="M27 10h-5v20c0 2-2 4-4 4s-4-2-4-4 2-4 4-4v-5c-5 0-10 4-10 9s5 9 10 9 9-4 9-9V20c2 1 4 2 7 2v-5c-4 0-7-3-7-7z"/>
+          <path fill="#fff" d="M28 10h-5v20c0 2-2 4-4 4s-4-2-4-4 2-4 4-4v-5c-5 0-10 4-10 9s5 9 10 9 9-4 9-9V20c2 1 4 2 7 2v-5c-4 0-7-3-7-7z" opacity=".9"/>
+        </svg>
+      )
+    case 'karrot':
+      return (
+        <svg width={s} height={s} viewBox="0 0 48 48" className={className} aria-label="Karrot" role="img">
+          <rect width="48" height="48" rx="8" fill="#FF7E36"/>
+          <path fill="#fff" d="M24 10c-3 0-6 3-6 7 0 2 1 4 2 5l-8 13 2 2 6-5 2 4c1 2 4 2 5 0l2-4 6 5 2-2-8-13c1-1 2-3 2-5 0-4-3-7-6-7zm0 5c1 0 2 1 2 2s-1 2-2 2-2-1-2-2 1-2 2-2z"/>
+        </svg>
+      )
   }
 }
 
@@ -57,6 +73,7 @@ export function ChannelIcon({ channel, size = 16, className }: Props) {
 export function ChannelDot({ channel, size = 8 }: { channel: AdChannel; size?: number }) {
   const color: Record<AdChannel, string> = {
     google: '#4285F4', meta: '#1877F2', naver: '#03C75A', kakao: '#FEE500',
+    tiktok: '#000000', karrot: '#FF7E36',
   }
   return <span className="inline-block rounded-full shrink-0" style={{ width: size, height: size, backgroundColor: color[channel] }} />
 }

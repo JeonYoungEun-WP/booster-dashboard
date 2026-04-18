@@ -7,6 +7,7 @@ import {
   getCreativePerformance,
   getTotalSummary,
   getIntegrationStatus,
+  getAnalyticsIntegrationStatus,
   type AdChannel,
 } from '@/src/lib/ad-data'
 
@@ -67,7 +68,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ period: { startDate, endDate }, creatives })
     }
     if (view === 'integrations') {
-      return NextResponse.json({ integrations: getIntegrationStatus() })
+      return NextResponse.json({
+        integrations: getIntegrationStatus(),
+        analytics: getAnalyticsIntegrationStatus(),
+      })
     }
     return NextResponse.json({ error: 'Unknown view' }, { status: 400 })
   } catch (e) {
