@@ -10,6 +10,18 @@ import { ChannelIcon } from '@/src/components/ui/ChannelIcon';
 import { formatNumber } from '@/src/lib/format';
 import { CHANNEL_COLOR, CHANNEL_LABEL, type AdChannel, type AdMetrics, type ChannelPerformance, type DailyPerformance, type CampaignPerformance, type IntegrationStatus } from '@/src/lib/ad-data';
 
+interface GA4Summary {
+  period: { startDate: string; endDate: string };
+  propertyId: string;
+  totals: {
+    sessions: number; activeUsers: number; newUsers: number;
+    conversions: number; totalRevenue: number;
+    engagementRate: number; averageSessionDuration: number;
+  };
+  byChannel: { channel: string; sessions: number; activeUsers: number; conversions: number; totalRevenue: number }[];
+  bySource: { source: string; medium: string; campaign: string; sessions: number; conversions: number }[];
+}
+
 interface DashboardData {
   period: { startDate: string; endDate: string };
   total: AdMetrics;
@@ -47,6 +59,8 @@ export default function AdPerformanceDashboard() {
   const [startDate, setStartDate] = useState(offset(29));
   const [endDate, setEndDate] = useState(offset(0));
   const [data, setData] = useState<DashboardData | null>(null);
+  const [ga4, setGa4] = useState<GA4Summary | null>(null);
+  const [ga4Error, setGa4Error] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -55,6 +69,19 @@ export default function AdPerformanceDashboard() {
       .then((r) => r.json())
       .then((d) => { setData(d); setLoading(false); })
       .catch(() => setLoading(false));
+
+    // GA4는 별도 페치 (실패해도 광고 대시보드는 계속 표시)
+    setGa4(null); setGa4Error(null);
+    fetch(`/api/ga4?view=summary&startDate=${startDate}&endDate=${endDate}`)
+      .then(async (r) => {
+        if (!r.ok) {
+          const err = await r.json().catch(() => ({ error: `HTTP ${r.status}` }));
+          setGa4Error(err.error || err.hint || `HTTP ${r.status}`);
+          return;
+        }
+        setGa4(await r.json());
+      })
+      .catch((e) => setGa4Error((e as Error).message));
   }, [startDate, endDate]);
 
   const channelPie = useMemo(() => data?.byChannel.map((c) => ({ label: c.label, value: c.cost, channel: c.channel })) || [], [data]);
@@ -64,13 +91,80 @@ export default function AdPerformanceDashboard() {
       <div className="max-w-7xl mx-auto">
         <div className="mb-4">
           <h1 className="text-2xl font-bold">광고성과분석</h1>
-          <p className="text-sm text-muted-foreground mt-1">Google · Meta · Naver · Kakao 통합 광고 성과</p>
+          <p className="text-sm text-muted-foreground mt-1">heypick.co.kr · Google · Meta · Naver · Kakao · TikTok · 당근 통합</p>
         </div>
 
 
         <div className="flex justify-end mb-4">
           <DateRangePicker startDate={startDate} endDate={endDate} onChange={(s, e) => { setStartDate(s); setEndDate(e); }} />
         </div>
+
+        {/* heypick.co.kr GA4 트래픽 요약 */}
+        <section className="mb-6">
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="text-sm font-semibold">
+              <span className="inline-flex items-center gap-2">
+                <span className="w-5 h-5 rounded bg-blue-50 text-blue-600 inline-flex items-center justify-center text-[10px] font-bold">GA</span>
+                heypick.co.kr 트래픽
+              </span>
+            </h2>
+            {ga4 && <span className="text-[11px] text-muted-foreground">Property: {ga4.propertyId}</span>}
+          </div>
+          {ga4Error ? (
+            <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+              <p className="font-medium mb-1">GA4 연결 필요</p>
+              <p className="text-xs mb-2">{ga4Error}</p>
+              <p className="text-xs text-amber-800">
+                Vercel Environment Variables 에 <code>GA4_PROPERTY_ID=436683873</code> + GCP Workload Identity 필드
+                (<code>GCP_PROJECT_NUMBER</code>, <code>GCP_WORKLOAD_IDENTITY_POOL_ID</code>,
+                <code>GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID</code>, <code>GCP_SERVICE_ACCOUNT_EMAIL</code>) 를 설정하세요.
+              </p>
+            </div>
+          ) : !ga4 ? (
+            <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">로딩 중...</div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              <KpiCard label="세션" value={formatNumber(ga4.totals.sessions)} />
+              <KpiCard label="활성 사용자" value={formatNumber(ga4.totals.activeUsers)}
+                       sub={`신규 ${formatNumber(ga4.totals.newUsers)}`} />
+              <KpiCard label="전환(리드수)" value={formatNumber(ga4.totals.conversions)} accent="text-emerald-600" />
+              <KpiCard label="매출"
+                       value={ga4.totals.totalRevenue ? '₩' + Math.round(ga4.totals.totalRevenue).toLocaleString('ko-KR') : '-'} />
+              <KpiCard label="참여율" value={fmtPct(ga4.totals.engagementRate * 100)} />
+              <KpiCard label="평균 세션" value={`${Math.round(ga4.totals.averageSessionDuration)}초`} />
+            </div>
+          )}
+
+          {ga4 && ga4.byChannel.length > 0 && (
+            <div className="mt-3 rounded-xl border border-border bg-card p-4">
+              <p className="text-xs font-semibold mb-2 text-muted-foreground">세션 채널 그룹</p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border text-left text-muted-foreground">
+                      <th className="py-1.5 px-2">채널 그룹</th>
+                      <th className="py-1.5 px-2 text-right">세션</th>
+                      <th className="py-1.5 px-2 text-right">활성 사용자</th>
+                      <th className="py-1.5 px-2 text-right">전환(리드수)</th>
+                      <th className="py-1.5 px-2 text-right">매출</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ga4.byChannel.slice(0, 8).map((r, i) => (
+                      <tr key={i} className="border-b border-border/50 hover:bg-muted/30">
+                        <td className="py-1.5 px-2 font-medium">{r.channel}</td>
+                        <td className="py-1.5 px-2 text-right">{formatNumber(r.sessions)}</td>
+                        <td className="py-1.5 px-2 text-right">{formatNumber(r.activeUsers)}</td>
+                        <td className="py-1.5 px-2 text-right text-emerald-700">{formatNumber(r.conversions)}</td>
+                        <td className="py-1.5 px-2 text-right">{r.totalRevenue ? fmtKRW(r.totalRevenue) : '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </section>
 
         {loading || !data ? (
           <div className="py-20 text-center text-muted-foreground">로딩 중...</div>
