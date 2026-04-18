@@ -1,6 +1,5 @@
 'use client';
 
-import { AdSubNav } from '@/src/components/ui/SubNav';
 import { AdAiQueryBox } from '@/src/components/ui/AdAiQueryBox';
 
 export default function AdAiPage() {
@@ -12,7 +11,6 @@ export default function AdAiPage() {
           <p className="text-sm text-muted-foreground mt-1">광고매체 통합 데이터를 실시간으로 조회하여 대화형으로 분석합니다</p>
         </div>
 
-        <AdSubNav />
 
         <AdAiQueryBox />
       </div>

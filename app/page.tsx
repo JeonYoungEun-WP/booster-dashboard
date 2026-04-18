@@ -5,8 +5,8 @@ import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
-import { AdSubNav } from '@/src/components/ui/SubNav';
 import { DateRangePicker } from '@/src/components/ui/DateRangePicker';
+import { ChannelIcon } from '@/src/components/ui/ChannelIcon';
 import { formatNumber } from '@/src/lib/format';
 import { CHANNEL_COLOR, CHANNEL_LABEL, type AdChannel, type AdMetrics, type ChannelPerformance, type DailyPerformance, type CampaignPerformance, type IntegrationStatus } from '@/src/lib/ad-data';
 
@@ -67,7 +67,6 @@ export default function AdPerformanceDashboard() {
           <p className="text-sm text-muted-foreground mt-1">Google · Meta · Naver · Kakao 통합 광고 성과</p>
         </div>
 
-        <AdSubNav />
 
         <div className="flex justify-end mb-4">
           <DateRangePicker startDate={startDate} endDate={endDate} onChange={(s, e) => { setStartDate(s); setEndDate(e); }} />
@@ -142,7 +141,7 @@ export default function AdPerformanceDashboard() {
                       <tr key={c.channel} className="border-b border-border/50 hover:bg-muted/30">
                         <td className="py-2 px-3">
                           <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: CHANNEL_COLOR[c.channel] }} />
+                            <ChannelIcon channel={c.channel} size={16} />
                             <span className="font-medium">{c.label}</span>
                           </div>
                         </td>
@@ -202,7 +201,7 @@ export default function AdPerformanceDashboard() {
                         <td className="py-2 px-3 font-medium">{c.campaignName}</td>
                         <td className="py-2 px-3">
                           <span className="inline-flex items-center gap-1.5 text-xs">
-                            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: CHANNEL_COLOR[c.channel] }} />
+                            <ChannelIcon channel={c.channel} size={14} />
                             {CHANNEL_LABEL[c.channel]}
                           </span>
                         </td>

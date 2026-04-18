@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { AdSubNav } from '@/src/components/ui/SubNav';
 import { CHANNEL_COLOR, type IntegrationStatus } from '@/src/lib/ad-data';
 
 const ENV_HINTS: Record<string, string[]> = {
@@ -32,7 +31,6 @@ export default function IntegrationsPage() {
           </p>
         </div>
 
-        <AdSubNav />
 
         {loading ? (
           <div className="py-20 text-center text-muted-foreground">로딩 중...</div>

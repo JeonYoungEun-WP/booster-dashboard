@@ -5,7 +5,6 @@ import {
   AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
-import { AdSubNav } from '@/src/components/ui/SubNav';
 import { DateRangePicker } from '@/src/components/ui/DateRangePicker';
 import { formatNumber } from '@/src/lib/format';
 import {
@@ -402,7 +401,6 @@ export default function ReportBuilderPage() {
           <p className="text-sm text-muted-foreground mt-1">표지 · 핵심 지표 · 추이 · 광고 소재 4페이지 리포트</p>
         </div>
 
-        <div className="print:hidden"><AdSubNav /></div>
 
         {/* 컨트롤 바 */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4 print:hidden">

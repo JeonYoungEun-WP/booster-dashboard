@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { AdSubNav } from '@/src/components/ui/SubNav';
 import { DateRangePicker } from '@/src/components/ui/DateRangePicker';
 import { formatNumber } from '@/src/lib/format';
 import {
@@ -201,7 +200,6 @@ export default function CreativesPage() {
           <p className="text-sm text-muted-foreground mt-1">크리에이티브 단위로 어떤 소재가 잘 팔리는지 분석합니다</p>
         </div>
 
-        <AdSubNav />
 
         {/* 필터 바 */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { GNB } from "@/src/components/layout/GNB";
+import { Sidebar, MobileTabBar } from "@/src/components/layout/Sidebar";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,8 +15,13 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body>
-        <GNB />
-        {children}
+        <div className="flex min-h-screen">
+          <Sidebar />
+          <main className="flex-1 min-w-0 pb-16 md:pb-0">
+            {children}
+          </main>
+        </div>
+        <MobileTabBar />
       </body>
     </html>
   );
