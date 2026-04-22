@@ -32,7 +32,7 @@ import {
   getChannelSummary, getCampaignPerformance,
   type CampaignPerformance, type ChannelPerformance,
 } from '@/src/lib/ad-data'
-import { buildLandingUrls, parseCampaignTag } from '@/src/lib/mapping'
+import { buildLandingUrls, buildEventFilterPatterns, parseCampaignTag } from '@/src/lib/mapping'
 import {
   getEvent1042Campaigns,
   EVENT_1042_LEAD_TOTAL,
@@ -72,6 +72,7 @@ export async function GET(req: NextRequest) {
   const excludeTest = searchParams.get('excludeTest') === '1'
 
   const landingPaths = buildLandingUrls(eventId, legacySlug)
+  const eventFilter = buildEventFilterPatterns(eventId, legacySlug)
 
   // ───── 병렬 페칭 ─────
   const ga4Creds = hasGA4Creds()
@@ -81,14 +82,14 @@ export async function GET(req: NextRequest) {
     bySource: GA4SourceRow[]
   } | null> = ga4Creds
     ? Promise.all([
-        getEventTotals(startDate, endDate, landingPaths, excludeTest),
-        getEventDaily(startDate, endDate, landingPaths, excludeTest),
-        getEventBySource(startDate, endDate, landingPaths, excludeTest),
+        getEventTotals(startDate, endDate, eventFilter.queryParam, eventFilter.legacyPathPrefixes, excludeTest),
+        getEventDaily(startDate, endDate, eventFilter.queryParam, eventFilter.legacyPathPrefixes, excludeTest),
+        getEventBySource(startDate, endDate, eventFilter.queryParam, eventFilter.legacyPathPrefixes, excludeTest),
       ]).then(([totals, daily, bySource]) => ({ totals, daily, bySource }))
     : Promise.resolve(null)
 
   const clarityPromise: Promise<ClarityResult> = hasClarityCreds()
-    ? getEventInsights(landingPaths, dateRangeToClarityDays(startDate, endDate))
+    ? getEventInsights(eventId, legacySlug, dateRangeToClarityDays(startDate, endDate))
     : Promise.resolve({ unavailable: true as const, reason: 'no_creds' as const })
 
   const adsPromise: Promise<{

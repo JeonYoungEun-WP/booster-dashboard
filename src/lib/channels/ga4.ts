@@ -250,29 +250,50 @@ export interface GA4PageTotals extends GA4Totals {
 }
 
 /**
- * 이벤트 ID (+ 레거시 슬러그 옵션)로 GA4 pagePath 필터 생성.
- * OR 조건 — 어느 경로로든 랜딩한 세션을 모두 포함.
+ * 이벤트 단위 GA4 dimension 필터 빌더.
+ *
+ * 실제 heypick 랜딩 URL 구조:
+ *   heypick.co.kr/tasks/<templateId>/?event=<eventId>&media=<mediaId>
+ * → 이벤트 ID 는 URL 쿼리스트링에 존재, pagePath 엔 없음.
+ * 따라서 `pagePathPlusQueryString CONTAINS 'event=<id>'` 로 매칭해야 정확.
+ *
+ * 레거시 슬러그 페이지 (쿼리 파라미터 없는 구조 이전 URL) 는 추가 OR 로 pagePath BEGINS_WITH 매칭.
+ *
+ * @param eventQueryParam - 예: "event=1042"
+ * @param legacyPathPrefixes - 예: ["/nexentire_rental"]
+ * @param excludeTest - Headless 브라우저 제외
  */
-function pagePathFilter(paths: string[], excludeTest?: boolean) {
-  const urlExpressions = paths.map((p) => ({
-    filter: {
-      fieldName: 'pagePath',
-      stringFilter: { matchType: 'BEGINS_WITH' as const, value: p },
+function eventDimensionFilter(
+  eventQueryParam: string,
+  legacyPathPrefixes: string[],
+  excludeTest?: boolean,
+) {
+  const matchExpressions: unknown[] = [
+    {
+      filter: {
+        fieldName: 'pagePathPlusQueryString',
+        stringFilter: { matchType: 'CONTAINS' as const, value: eventQueryParam },
+      },
     },
-  }))
+    ...legacyPathPrefixes.map((p) => ({
+      filter: {
+        fieldName: 'pagePath',
+        stringFilter: { matchType: 'BEGINS_WITH' as const, value: p },
+      },
+    })),
+  ]
 
-  const urlGroup = urlExpressions.length === 1
-    ? urlExpressions[0]
-    : { orGroup: { expressions: urlExpressions } }
+  const matchGroup = matchExpressions.length === 1
+    ? matchExpressions[0]
+    : { orGroup: { expressions: matchExpressions } }
 
-  if (!excludeTest) return { dimensionFilter: urlGroup }
+  if (!excludeTest) return { dimensionFilter: matchGroup }
 
-  // AND: URL 일치 AND Headless 브라우저가 아닐 것
   return {
     dimensionFilter: {
       andGroup: {
         expressions: [
-          urlGroup,
+          matchGroup,
           {
             notExpression: {
               filter: {
@@ -291,7 +312,8 @@ function pagePathFilter(paths: string[], excludeTest?: boolean) {
 export async function getEventTotals(
   startDate: string,
   endDate: string,
-  pagePaths: string[],
+  eventQueryParam: string,
+  legacyPathPrefixes: string[],
   excludeTest?: boolean,
 ): Promise<GA4PageTotals> {
   const json = await runReport<GA4RawResponse>({
@@ -302,7 +324,7 @@ export async function getEventTotals(
       { name: 'conversions' }, { name: 'totalRevenue' },
       { name: 'engagementRate' }, { name: 'averageSessionDuration' },
     ],
-    ...pagePathFilter(pagePaths, excludeTest),
+    ...eventDimensionFilter(eventQueryParam, legacyPathPrefixes, excludeTest),
   })
   const v = json.rows?.[0]?.metricValues ?? []
   return {
@@ -321,7 +343,8 @@ export async function getEventTotals(
 export async function getEventDaily(
   startDate: string,
   endDate: string,
-  pagePaths: string[],
+  eventQueryParam: string,
+  legacyPathPrefixes: string[],
   excludeTest?: boolean,
 ): Promise<GA4DailyRow[]> {
   const json = await runReport<GA4RawResponse>({
@@ -330,7 +353,7 @@ export async function getEventDaily(
     metrics: [{ name: 'sessions' }, { name: 'activeUsers' }, { name: 'conversions' }],
     orderBys: [{ dimension: { dimensionName: 'date' } }],
     limit: 1000,
-    ...pagePathFilter(pagePaths, excludeTest),
+    ...eventDimensionFilter(eventQueryParam, legacyPathPrefixes, excludeTest),
   })
   return (json.rows ?? []).map((r) => ({
     date: formatGa4Date(r.dimensionValues[0].value),
@@ -344,7 +367,8 @@ export async function getEventDaily(
 export async function getEventBySource(
   startDate: string,
   endDate: string,
-  pagePaths: string[],
+  eventQueryParam: string,
+  legacyPathPrefixes: string[],
   excludeTest?: boolean,
 ): Promise<GA4SourceRow[]> {
   const json = await runReport<GA4RawResponse>({
@@ -357,7 +381,7 @@ export async function getEventBySource(
     metrics: [{ name: 'sessions' }, { name: 'conversions' }],
     orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
     limit: 50,
-    ...pagePathFilter(pagePaths, excludeTest),
+    ...eventDimensionFilter(eventQueryParam, legacyPathPrefixes, excludeTest),
   })
   return (json.rows ?? []).map((r) => ({
     source: r.dimensionValues[0].value || '(direct)',

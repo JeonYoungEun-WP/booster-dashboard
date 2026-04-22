@@ -53,26 +53,36 @@ function Gauge({ label, value, suffix = '%', danger = false }: { label: string; 
 export function ClarityCard({ data }: { data: ClarityCardData }) {
   return (
     <section className="rounded-xl border border-border bg-card p-4">
-      <div className="flex items-baseline justify-between mb-3">
-        <h2 className="text-sm font-semibold">Microsoft Clarity — UX 인사이트</h2>
+      <div className="flex items-baseline justify-between mb-3 gap-2 flex-wrap">
         <div className="flex items-center gap-2">
+          <h2 className="text-sm font-semibold">Microsoft Clarity — UX 인사이트</h2>
           {isSuccess(data) && (
-            <span className="text-[10px] text-muted-foreground">
-              최근 {data.numOfDays}일 기준{data.stale ? ' · 캐시' : ''}
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+              🔴 실시간 · 최근 {data.numOfDays}일
             </span>
           )}
-          {'consoleUrl' in data && data.consoleUrl && (
-            <a
-              href={data.consoleUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="text-[11px] text-primary inline-flex items-center gap-1 hover:underline"
-            >
-              녹화 보기 <ExternalLink size={12} />
-            </a>
+          {isSuccess(data) && data.stale && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+              캐시
+            </span>
           )}
         </div>
+        {'consoleUrl' in data && data.consoleUrl && (
+          <a
+            href={data.consoleUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-[11px] text-primary inline-flex items-center gap-1 hover:underline"
+          >
+            녹화 보기 <ExternalLink size={12} />
+          </a>
+        )}
       </div>
+      {isSuccess(data) && (
+        <p className="text-[11px] text-muted-foreground -mt-1 mb-3">
+          Clarity API 는 최근 3일까지만 제공 — 조회 기간과 무관하게 실시간 최근 데이터 표시
+        </p>
+      )}
 
       {isUnavailable(data) && (
         <div className="rounded-lg border border-border bg-muted/20 p-3 text-sm text-muted-foreground">

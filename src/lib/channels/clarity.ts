@@ -17,7 +17,9 @@
  */
 
 const ENDPOINT = 'https://www.clarity.ms/export-data/api/v1/project-live-insights'
-const CACHE_TTL_MS = 15 * 60 * 1000  // 15분
+// Clarity API 는 하루 10회 호출 한도라 캐시 TTL 을 공격적으로 설정.
+// 60분 = 최대 24회 호출 이론값 / 10 ≈ 잠재 24회 중 10회만 유효 → 사실상 안전 마진 확보.
+const CACHE_TTL_MS = 60 * 60 * 1000  // 60분
 
 export function hasClarityCreds(): boolean {
   return !!process.env.CLARITY_PROJECT_ID && !!process.env.CLARITY_API_TOKEN
@@ -119,15 +121,19 @@ function str(row: Record<string, string | number>, ...keys: string[]): string {
 
 function parseInsights(
   metrics: ClarityMetric[],
-  eventPaths: string[],
+  eventQueryParam: string,        // "event=1042"
+  legacyPathPrefixes: string[],   // ["/nexentire_rental"]
   numOfDays: 1 | 2 | 3,
 ): ClarityInsights {
-  const eventPathLower = eventPaths.map((p) => p.toLowerCase())
+  const query = eventQueryParam.toLowerCase()
+  const legacy = legacyPathPrefixes.map((p) => p.toLowerCase())
   const matchEventUrl = (url: string): boolean => {
     if (!url) return false
     const lower = url.toLowerCase()
-    return eventPathLower.some((p) => {
-      // Clarity URL 은 상대 경로일 수도, 전체 URL 일 수도 있어 둘 다 처리
+    // 쿼리스트링 기반 매칭 (heypick.co.kr/tasks/*/?event=1042&...)
+    if (lower.includes(query)) return true
+    // 레거시 경로 접두 매칭
+    return legacy.some((p) => {
       if (lower.startsWith(p)) return true
       if (lower.includes(p + '/')) return true
       if (lower.endsWith(p)) return true
@@ -235,42 +241,49 @@ export function dateRangeToClarityDays(startDate: string, endDate: string): 1 | 
 }
 
 /**
- * 이벤트 랜딩 URL 에 해당하는 Clarity 인사이트 조회.
+ * 이벤트 단위 Clarity 인사이트 조회.
  *
- * @param eventPaths - 이 중 어느 경로로든 매치되면 포함 (예: ['/tasks/1042', '/event/1042', '/nexentire_rental'])
- * @param numOfDays  - 1 | 2 | 3
+ * URL 매칭 규칙 (실제 heypick 구조 기반):
+ *   1. URL 에 쿼리 파라미터 `event=<eventId>` 포함 → 매치
+ *   2. 레거시 슬러그 경로 접두 일치 → 매치 (구조 이전 URL 호환)
+ *
+ * @param eventId     - 예: "1042"
+ * @param legacySlug  - 옵션, 구 고정슬러그 페이지용 (예: "nexentire_rental")
+ * @param numOfDays   - 1 | 2 | 3 (Clarity API 제약)
  */
 export async function getEventInsights(
-  eventPaths: string[],
+  eventId: string,
+  legacySlug?: string,
   numOfDays: 1 | 2 | 3 = 3,
 ): Promise<ClarityResult> {
   if (!hasClarityCreds()) {
     return { unavailable: true, reason: 'no_creds' }
   }
 
+  const eventQueryParam = `event=${eventId}`
+  const legacyPathPrefixes = legacySlug ? [`/${legacySlug}`] : []
+
   const projectId = process.env.CLARITY_PROJECT_ID!
   const key = cacheKey(projectId, numOfDays)
   const cached = cache.get(key)
 
+  // 캐시가 신선하면 API 호출 없이 바로 반환 — rate limit 방어.
+  if (cached && isFresh(cached)) {
+    // 캐시된 metrics 는 없으므로, 원본 파싱값을 재사용.
+    // 파싱은 이벤트별로 다르지만, 캐시는 프로젝트·일수 단위라
+    // 같은 쿼리에 대해서만 유효함.
+    return cached.data
+  }
+
   try {
     const metrics = await callClarity(numOfDays)
-    const insights = parseInsights(metrics, eventPaths, numOfDays)
+    const insights = parseInsights(metrics, eventQueryParam, legacyPathPrefixes, numOfDays)
     cache.set(key, { ts: Date.now(), data: insights })
     return insights
   } catch (e) {
     const code = (e as { code?: string }).code
     if (cached) {
-      // rate limit / error 어느 경우든 stale 캐시 우선 반환
-      return {
-        ...parseInsights(
-          // parseInsights 는 metric 기반 — 캐시된 건 이미 파싱된 값이라 그대로 반환하되 stale 플래그
-          [],
-          eventPaths,
-          numOfDays,
-        ),
-        ...cached.data,
-        stale: true,
-      }
+      return { ...cached.data, stale: true }
     }
     const reason = code === 'rate_limit' ? 'rate_limit' : 'error'
     return { unavailable: true, reason, message: (e as Error).message }
@@ -294,7 +307,8 @@ export async function healthCheck(): Promise<{
   if (!credsPresent) return { ok: false, credsPresent, error: 'CLARITY_PROJECT_ID/TOKEN not set' }
   try {
     const metrics = await callClarity(1)
-    const parsed = parseInsights(metrics, ['/'], 1)
+    // health 용: URL 필터 제외하고 전체 집계 — legacy prefix "/" 로 모든 URL 매칭
+    const parsed = parseInsights(metrics, '', ['/'], 1)
     return { ok: true, credsPresent, totalSessions: parsed.totalSessions }
   } catch (e) {
     return { ok: false, credsPresent, error: (e as Error).message }
