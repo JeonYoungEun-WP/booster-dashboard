@@ -123,6 +123,47 @@ function dailyLeadCount(eventId: string, date: string, sessionCount?: number): n
 // ───── 공개 API ─────
 
 /**
+ * 총량 `total` 을 주어진 날짜 배열에 **주말 가중치 10%** 로 분배.
+ * - 주중(월~금): weight 1.0 + ±15% 시드 변동
+ * - 주말(토·일): weight 0.1 + ±15% 시드 변동
+ * - 합이 정확히 `total` 이 되도록 잔여 보정
+ */
+function distributeWithWeekendFactor(
+  total: number,
+  dates: string[],
+  seedPrefix: string,
+  weekendFactor: number = 0.1,
+): Record<string, number> {
+  if (total <= 0 || dates.length === 0) {
+    return Object.fromEntries(dates.map((d) => [d, 0]))
+  }
+  const weights = dates.map((d) => {
+    const day = new Date(d).getDay()            // 0=일, 6=토
+    const base = (day === 0 || day === 6) ? weekendFactor : 1.0
+    const variation = 0.85 + seedFromString(`${seedPrefix}-${d}`) * 0.30  // 0.85 ~ 1.15
+    return base * variation
+  })
+  const totalWeight = weights.reduce((s, w) => s + w, 0)
+  const floats = weights.map((w) => total * (w / totalWeight))
+  const floors = floats.map(Math.floor)
+  const sum = floors.reduce((s, n) => s + n, 0)
+  const remainder = total - sum
+
+  // 소수점 큰 날짜부터 +1 씩 분배
+  const sortedIdx = dates
+    .map((_, i) => i)
+    .sort((a, b) => (floats[b] - floors[b]) - (floats[a] - floors[a]))
+
+  const result: Record<string, number> = {}
+  dates.forEach((d, i) => { result[d] = floors[i] })
+  for (let i = 0; i < remainder && i < sortedIdx.length; i++) {
+    const idx = sortedIdx[i]
+    result[dates[idx]] += 1
+  }
+  return result
+}
+
+/**
  * 이벤트 ID (+ 옵션 트래킹코드) 로 기간 내 리드 목록 생성.
  *
  * @param eventId
@@ -134,7 +175,9 @@ function dailyLeadCount(eventId: string, date: string, sessionCount?: number): n
  *   주어지면 이 코드들로만 리드를 분배 (광고 ↔ 리드 ↔ 예약 조인 성립).
  *   없으면 이벤트ID 기반 더미 코드 생성 (조인 불가 경고).
  * @param overrideTotalLeads - 실데이터 제공 이벤트의 총 리드 건수 강제 지정.
- *   주어지면 세션 기반 계산 대신 이 숫자로 정확히 분배 (더미 균등 분산).
+ *   주어지면 주말 10% 가중치로 날짜별 분배 (합계 정확).
+ * @param overrideTotalReservations - 예약 총 건수 강제 지정.
+ *   주어지면 예약완료 상태를 N건만 할당 (주말 가중치 분배, 리드 집합 부분집합).
  */
 export async function getLeadsByEvent(
   eventId: string,
@@ -144,6 +187,7 @@ export async function getLeadsByEvent(
   sessionByDate?: Record<string, number>,
   candidateTrackingCodes?: string[],
   overrideTotalLeads?: number,
+  overrideTotalReservations?: number,
 ): Promise<LeadRow[]> {
   const start = startDate ?? new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10)
   const end = endDate ?? new Date().toISOString().slice(0, 10)
@@ -154,15 +198,15 @@ export async function getLeadsByEvent(
     : generateTrackingCodes(eventId, 5)
   const codes = trackingCode ? [trackingCode] : allCodes
 
-  // overrideTotalLeads 가 있으면 날짜별 균등 분배 (소수점은 앞날짜에 더 배분)
-  const overrideDailyCounts: Record<string, number> = {}
-  if (overrideTotalLeads !== undefined && overrideTotalLeads >= 0) {
-    const base = Math.floor(overrideTotalLeads / dates.length)
-    const remainder = overrideTotalLeads - base * dates.length
-    dates.forEach((d, i) => {
-      overrideDailyCounts[d] = base + (i < remainder ? 1 : 0)
-    })
-  }
+  // overrideTotalLeads → 주말 가중치 분배
+  const overrideLeadsDaily: Record<string, number> = overrideTotalLeads !== undefined
+    ? distributeWithWeekendFactor(overrideTotalLeads, dates, `leads-${eventId}`)
+    : {}
+
+  // overrideTotalReservations → 날짜별 예약 건수 사전 계산 (주말 가중치)
+  const overrideReservationsDaily: Record<string, number> = overrideTotalReservations !== undefined
+    ? distributeWithWeekendFactor(overrideTotalReservations, dates, `res-${eventId}`)
+    : {}
 
   const leads: LeadRow[] = []
   let idCounter = 0
@@ -170,8 +214,13 @@ export async function getLeadsByEvent(
   for (const date of dates) {
     const sessions = sessionByDate?.[date]
     const count = overrideTotalLeads !== undefined
-      ? (overrideDailyCounts[date] ?? 0)
+      ? (overrideLeadsDaily[date] ?? 0)
       : dailyLeadCount(eventId, date, sessions)
+
+    // 이 날짜에 '예약완료' 로 강제 할당할 리드 수 (override 모드에서만)
+    const reservationsForDate = overrideTotalReservations !== undefined
+      ? (overrideReservationsDaily[date] ?? 0)
+      : -1
 
     for (let i = 0; i < count; i++) {
       const seedBase = `${eventId}-${date}-${i}`
@@ -182,7 +231,22 @@ export async function getLeadsByEvent(
       const sName = seedFromString(`name-${seedBase}`)
       const sTime = seedFromString(`time-${seedBase}`)
 
-      const status = pickStatus(sStatus)
+      // 상태 할당:
+      // - override 모드: 처음 reservationsForDate 건은 '예약완료',
+      //   나머지는 시드 기반 4개 상태(접수·통화중·거절·무응답) 분배
+      // - 기본 모드: 시드 기반 5개 상태 분배
+      let status: LeadStatus
+      if (reservationsForDate >= 0) {
+        if (i < reservationsForDate) {
+          status = '예약완료'
+        } else {
+          // 비-예약완료 4개 상태 (접수·통화중·거절·무응답) 에 균등 분배
+          const nonReservation = ['접수', '통화중', '거절', '무응답'] as const
+          status = nonReservation[Math.floor(sStatus * nonReservation.length)]
+        }
+      } else {
+        status = pickStatus(sStatus)
+      }
       const codeIdx = Math.floor(sCode * codes.length)
       const code = codes[Math.min(codeIdx, codes.length - 1)]
       const source = SOURCE_POOL[Math.floor(sSource * SOURCE_POOL.length)]
@@ -231,10 +295,11 @@ export async function getReservationStats(
   sessionByDate?: Record<string, number>,
   candidateTrackingCodes?: string[],
   overrideTotalLeads?: number,
+  overrideTotalReservations?: number,
 ): Promise<ReservationStats> {
   const leads = await getLeadsByEvent(
     eventId, trackingCode, startDate, endDate, sessionByDate, candidateTrackingCodes,
-    overrideTotalLeads,
+    overrideTotalLeads, overrideTotalReservations,
   )
 
   const byStatusMap = new Map<LeadStatus, number>()

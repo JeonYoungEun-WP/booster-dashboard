@@ -155,12 +155,18 @@ export async function GET(req: NextRequest) {
   )
 
   // ───── 리드·예약 (더미) — 광고 결과의 트래킹코드 세트로 분배 ─────
+  // 이벤트 1042 는 예약 13건도 override (주말 10% 가중치로 분배)
+  const overrideReservationTotal = eventId === '1042'
+    ? EVENT_1042_REVENUE.reservationCount
+    : undefined
+
   let leadsResult: AdapterResult<ReservationStats>
   try {
     const stats = await getReservationStats(
       eventId, trackingCode, startDate, endDate, sessionByDate,
       eventTrackingCodes.length > 0 ? eventTrackingCodes : undefined,
       overrideLeadTotal ?? undefined,
+      overrideReservationTotal,
     )
     leadsResult = { ok: true, data: stats }
   } catch (e) {
