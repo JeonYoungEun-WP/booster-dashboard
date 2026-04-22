@@ -22,15 +22,19 @@ interface Funnel {
   sessions: number
   pageViews: number
   leads: number
-  reservations: number
+  visitReservations: number                 // 방문예약 (상담 완료)
+  reservations: number                      // 결제 (최종 매출)
   averageOrderValue: number
   reservationRevenue: number
   ctr: number
   cpc: number
-  cpa_lead: number               // 리드 획득당 비용
-  cpa_reservation: number        // 예약 획득당 비용
+  cpa_lead: number                          // 리드 획득당 비용
+  cpa_visitReservation: number              // 예약 획득비용 (방문예약 1건당)
+  cpa_reservation: number                   // 결제당 광고비용
   cvr_click_to_session: number
   cvr_session_to_lead: number
+  cvr_lead_to_visitReservation: number
+  cvr_visitReservation_to_payment: number
   cvr_lead_to_reservation: number
   trueROAS_estimated: number
 }
@@ -183,16 +187,20 @@ export default function EventAnalyticsPage() {
     const f = data.funnel
     const avgDuration = data.ga4.totals?.averageSessionDuration ?? 0
     return [
-      { label: '페이지뷰', value: fmtNumber(f.pageViews) },
-      { label: '세션', value: fmtNumber(f.sessions) },
-      { label: '리드', value: fmtNumber(f.leads), sub: '폼 제출 완료' },
-      { label: '예약', value: fmtNumber(f.reservations), sub: '상담 통화 완료', accent: 'text-emerald-600' },
-      { label: '광고비', value: fmtKRW(f.adSpend) },
-      // CPA (a=리드 획득): 리드 1건 획득에 든 광고비
-      { label: 'CPA', value: f.cpa_lead > 0 ? fmtKRW(f.cpa_lead) : '—', sub: '리드 획득당 비용' },
-      // 예약 획득 비용: 예약 1건 확정에 든 광고비 (매출당 비용을 구체적 용어로)
-      { label: '예약 획득 비용', value: f.cpa_reservation > 0 ? fmtKRW(f.cpa_reservation) : '—', sub: '예약 1건당 광고비' },
-      { label: '평균 체류', value: fmtDuration(avgDuration) },
+      // Row 1 — 트래픽 (GA + 어드민 리드)
+      { label: '페이지뷰', value: fmtNumber(f.pageViews), source: 'ga' as const },
+      { label: '세션', value: fmtNumber(f.sessions), source: 'ga' as const },
+      { label: '평균 체류', value: fmtDuration(avgDuration), source: 'ga' as const },
+      { label: '리드', value: fmtNumber(f.leads), sub: '폼 제출 완료', source: 'admin' as const },
+      // Row 2 — 전환
+      { label: '방문예약', value: fmtNumber(f.visitReservations), sub: '상담 완료', source: 'dummy' as const },
+      { label: '결제', value: fmtNumber(f.reservations), sub: '최종 매출 발생', accent: 'text-emerald-600', source: 'dummy' as const },
+      { label: '광고비', value: fmtKRW(f.adSpend), source: 'admin' as const },
+      { label: 'CPA', value: f.cpa_lead > 0 ? fmtKRW(f.cpa_lead) : '—', sub: '리드 획득당 비용', source: 'admin' as const },
+      // Row 3 — 효율
+      { label: '예약 획득비용', value: f.cpa_visitReservation > 0 ? fmtKRW(f.cpa_visitReservation) : '—', sub: '방문예약 1건당 광고비', source: 'dummy' as const },
+      { label: '결제당 광고비용', value: f.cpa_reservation > 0 ? fmtKRW(f.cpa_reservation) : '—', sub: '결제 1건당 광고비', source: 'dummy' as const },
+      { label: 'ROAS', value: (f.trueROAS_estimated * 100).toFixed(1) + '%', sub: '매출 / 광고비', accent: f.trueROAS_estimated >= 1 ? 'text-emerald-600' : 'text-amber-600', source: 'dummy' as const },
     ]
   }, [data])
 
@@ -200,11 +208,12 @@ export default function EventAnalyticsPage() {
     if (!data) return []
     const f = data.funnel
     return [
-      { label: '노출', value: f.impressions },
-      { label: '클릭', value: f.clicks, badge: `CTR ${f.ctr.toFixed(2)}%` },
-      { label: '세션', value: f.sessions },
-      { label: '리드', value: f.leads, badge: `${fmtPct(f.cvr_session_to_lead)}` },
-      { label: '예약', value: f.reservations, badge: `${fmtPct(f.cvr_lead_to_reservation)}` },
+      { label: '노출',     value: f.impressions,      source: 'admin' as const },
+      { label: '클릭',     value: f.clicks,           source: 'admin' as const },
+      { label: '세션',     value: f.sessions,         source: 'ga' as const },
+      { label: '리드',     value: f.leads,            source: 'admin' as const },
+      { label: '방문예약', value: f.visitReservations,source: 'dummy' as const },
+      { label: '결제',     value: f.reservations,     source: 'dummy' as const },
     ]
   }, [data])
 

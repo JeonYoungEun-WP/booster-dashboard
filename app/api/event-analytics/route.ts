@@ -183,13 +183,15 @@ export async function GET(req: NextRequest) {
   const pageViews = ga4Totals?.screenPageViews ?? 0
 
   const leads = leadsResult.ok ? leadsResult.data.leadCount : 0
-  // 예약 수·객단가·매출: 이벤트 1042 는 실데이터(더미) 고정,
-  // 그 외 이벤트는 리드 어댑터 결과 + 기본 객단가.
+  // 방문예약·결제·객단가·매출: 이벤트 1042 는 실데이터(더미) 고정,
+  // 그 외 이벤트는 리드 어댑터 기반 비례 추정.
+  let visitReservations = Math.round(leads * 0.10)        // 방문예약: 리드의 10% 기본 추정
   let reservations = leadsResult.ok ? leadsResult.data.reservationCount : 0
-  let averageOrderValue = 280_000  // 기본 객단가
+  let averageOrderValue = 280_000                         // 기본 객단가
   if (eventId === '1042') {
-    reservations = EVENT_1042_REVENUE.reservationCount    // 13건
-    averageOrderValue = EVENT_1042_REVENUE.averageOrderValue  // 1,300,000원
+    visitReservations = EVENT_1042_REVENUE.visitReservationCount  // 41건
+    reservations = EVENT_1042_REVENUE.reservationCount            // 13건 (결제)
+    averageOrderValue = EVENT_1042_REVENUE.averageOrderValue      // 1,300,000원
   }
   const reservationRevenue = reservations * averageOrderValue
 
@@ -200,16 +202,20 @@ export async function GET(req: NextRequest) {
     sessions,
     pageViews,
     leads,
-    reservations,
+    visitReservations,              // 방문예약 (상담 완료)
+    reservations,                   // 결제 (최종 매출 발생)
     averageOrderValue,
     reservationRevenue,
     ctr:     impressions > 0 ? (clicks / impressions) * 100 : 0,
     cpc:     clicks > 0      ? adSpend / clicks            : 0,
-    cpa_lead:   leads > 0       ? adSpend / leads          : 0,  // 리드 획득당 비용
-    cpa_reservation: reservations > 0 ? adSpend / reservations : 0,  // 예약당 비용
-    cvr_click_to_session:   clicks > 0 ? sessions / clicks : 0,
-    cvr_session_to_lead:    sessions > 0 ? leads / sessions : 0,
-    cvr_lead_to_reservation: leads > 0 ? reservations / leads : 0,
+    cpa_lead:             leads > 0             ? adSpend / leads             : 0,  // 리드 획득당 비용
+    cpa_visitReservation: visitReservations > 0 ? adSpend / visitReservations : 0,  // 예약 획득비용 (방문예약당)
+    cpa_reservation:      reservations > 0      ? adSpend / reservations      : 0,  // 결제당 광고비용
+    cvr_click_to_session:         clicks > 0 ? sessions / clicks : 0,
+    cvr_session_to_lead:          sessions > 0 ? leads / sessions : 0,
+    cvr_lead_to_visitReservation: leads > 0 ? visitReservations / leads : 0,
+    cvr_visitReservation_to_payment: visitReservations > 0 ? reservations / visitReservations : 0,
+    cvr_lead_to_reservation:      leads > 0 ? reservations / leads : 0,
     trueROAS_estimated: adSpend > 0 ? reservationRevenue / adSpend : 0,
   }
 

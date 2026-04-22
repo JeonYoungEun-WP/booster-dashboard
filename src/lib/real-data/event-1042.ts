@@ -47,10 +47,12 @@ export const EVENT_1042_TOTALS = {
 }
 
 // 매출 추정용 — 사용자 제공 더미 (매체 연동 전까지)
+// 퍼널: 리드 441 → 방문예약 41 → 결제 13
 export const EVENT_1042_REVENUE = {
-  reservationCount: 13,            // 예약 확정 건수 (실 예약 데이터 대체 더미)
+  visitReservationCount: 41,       // 방문예약 (상담 통화 후 방문 확정) 더미
+  reservationCount: 13,            // 결제 확정 건수 (최종 매출 발생) 더미
   averageOrderValue: 1_300_000,    // 객단가
-  totalRevenue: 13 * 1_300_000,    // 16,900,000
+  totalRevenue: 13 * 1_300_000,    // 16,900,000 (결제 기준)
 }
 
 interface RawAdSet {
