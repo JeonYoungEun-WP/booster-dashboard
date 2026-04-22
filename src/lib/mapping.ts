@@ -61,18 +61,21 @@ export function buildLandingUrls(eventId: string, legacySlug?: string): string[]
 export interface EventFilterPatterns {
   queryParam: string                  // "event=1042"
   mediaQueryParam?: string            // "media=1" (옵션)
-  legacyPathPrefixes: string[]        // ["/nexentire_rental"] 등
+  legacyPathPrefixes: string[]        // ["/doubleus"] 등 (구 고정 슬러그)
+  templatePathPrefixes: string[]      // ["/tasks/8426"] — GA4 쿼리 제거 시 우회 매칭
 }
 
 export function buildEventFilterPatterns(
   eventId: string,
   legacySlug?: string,
   mediaId?: string,
+  templatePaths?: string[],
 ): EventFilterPatterns {
   return {
     queryParam: `event=${eventId}`,
     mediaQueryParam: mediaId ? `media=${mediaId}` : undefined,
     legacyPathPrefixes: legacySlug ? [`/${legacySlug}`] : [],
+    templatePathPrefixes: templatePaths ?? [],
   }
 }
 

@@ -121,19 +121,20 @@ function str(row: Record<string, string | number>, ...keys: string[]): string {
 
 function parseInsights(
   metrics: ClarityMetric[],
-  eventQueryParam: string,        // "event=1042"
-  legacyPathPrefixes: string[],   // ["/nexentire_rental"]
+  eventQueryParam: string,           // "event=1042"
+  legacyPathPrefixes: string[],      // ["/doubleus"]
+  templatePathPrefixes: string[],    // ["/tasks/8426"] — 이벤트 전용 템플릿
   numOfDays: 1 | 2 | 3,
 ): ClarityInsights {
   const query = eventQueryParam.toLowerCase()
-  const legacy = legacyPathPrefixes.map((p) => p.toLowerCase())
+  const prefixes = [...legacyPathPrefixes, ...templatePathPrefixes].map((p) => p.toLowerCase())
   const matchEventUrl = (url: string): boolean => {
     if (!url) return false
     const lower = url.toLowerCase()
-    // 쿼리스트링 기반 매칭 (heypick.co.kr/tasks/*/?event=1042&...)
+    // (a) 쿼리스트링 기반 매칭 (heypick.co.kr/tasks/*/?event=1042&...)
     if (lower.includes(query)) return true
-    // 레거시 경로 접두 매칭
-    return legacy.some((p) => {
+    // (b) 레거시 또는 템플릿 경로 접두 매칭
+    return prefixes.some((p) => {
       if (lower.startsWith(p)) return true
       if (lower.includes(p + '/')) return true
       if (lower.endsWith(p)) return true
@@ -255,6 +256,7 @@ export async function getEventInsights(
   eventId: string,
   legacySlug?: string,
   numOfDays: 1 | 2 | 3 = 3,
+  templatePaths: string[] = [],
 ): Promise<ClarityResult> {
   if (!hasClarityCreds()) {
     return { unavailable: true, reason: 'no_creds' }
@@ -267,24 +269,16 @@ export async function getEventInsights(
   const key = cacheKey(projectId, numOfDays)
   const cached = cache.get(key)
 
-  // 캐시가 신선하면 API 호출 없이 바로 반환 — rate limit 방어.
-  if (cached && isFresh(cached)) {
-    // 캐시된 metrics 는 없으므로, 원본 파싱값을 재사용.
-    // 파싱은 이벤트별로 다르지만, 캐시는 프로젝트·일수 단위라
-    // 같은 쿼리에 대해서만 유효함.
-    return cached.data
-  }
+  if (cached && isFresh(cached)) return cached.data
 
   try {
     const metrics = await callClarity(numOfDays)
-    const insights = parseInsights(metrics, eventQueryParam, legacyPathPrefixes, numOfDays)
+    const insights = parseInsights(metrics, eventQueryParam, legacyPathPrefixes, templatePaths, numOfDays)
     cache.set(key, { ts: Date.now(), data: insights })
     return insights
   } catch (e) {
     const code = (e as { code?: string }).code
-    if (cached) {
-      return { ...cached.data, stale: true }
-    }
+    if (cached) return { ...cached.data, stale: true }
     const reason = code === 'rate_limit' ? 'rate_limit' : 'error'
     return { unavailable: true, reason, message: (e as Error).message }
   }
@@ -308,7 +302,7 @@ export async function healthCheck(): Promise<{
   try {
     const metrics = await callClarity(1)
     // health 용: URL 필터 제외하고 전체 집계 — legacy prefix "/" 로 모든 URL 매칭
-    const parsed = parseInsights(metrics, '', ['/'], 1)
+    const parsed = parseInsights(metrics, '', ['/'], [], 1)
     return { ok: true, credsPresent, totalSessions: parsed.totalSessions }
   } catch (e) {
     return { ok: false, credsPresent, error: (e as Error).message }

@@ -39,6 +39,7 @@ import {
   EVENT_1042_PERIOD,
   EVENT_1042_TOTALS,
   EVENT_1042_REVENUE,
+  EVENT_1042_TEMPLATE_PATHS,
 } from '@/src/lib/real-data/event-1042'
 
 export const maxDuration = 30
@@ -71,8 +72,12 @@ export async function GET(req: NextRequest) {
   const endDate = searchParams.get('endDate') || offsetDate(0)
   const excludeTest = searchParams.get('excludeTest') === '1'
 
+  // 이벤트별 템플릿 경로 등록 (GA4 쿼리 제거 설정 대비 우회 필터)
+  // 이벤트 1042 = 더블어스 = /tasks/8426 전용
+  const templatePaths = eventId === '1042' ? EVENT_1042_TEMPLATE_PATHS : []
+
   const landingPaths = buildLandingUrls(eventId, legacySlug)
-  const eventFilter = buildEventFilterPatterns(eventId, legacySlug)
+  const eventFilter = buildEventFilterPatterns(eventId, legacySlug, undefined, templatePaths)
 
   // ───── 병렬 페칭 ─────
   const ga4Creds = hasGA4Creds()
@@ -82,14 +87,14 @@ export async function GET(req: NextRequest) {
     bySource: GA4SourceRow[]
   } | null> = ga4Creds
     ? Promise.all([
-        getEventTotals(startDate, endDate, eventFilter.queryParam, eventFilter.legacyPathPrefixes, excludeTest),
-        getEventDaily(startDate, endDate, eventFilter.queryParam, eventFilter.legacyPathPrefixes, excludeTest),
-        getEventBySource(startDate, endDate, eventFilter.queryParam, eventFilter.legacyPathPrefixes, excludeTest),
+        getEventTotals(startDate, endDate, eventFilter.queryParam, eventFilter.legacyPathPrefixes, eventFilter.templatePathPrefixes, excludeTest),
+        getEventDaily(startDate, endDate, eventFilter.queryParam, eventFilter.legacyPathPrefixes, eventFilter.templatePathPrefixes, excludeTest),
+        getEventBySource(startDate, endDate, eventFilter.queryParam, eventFilter.legacyPathPrefixes, eventFilter.templatePathPrefixes, excludeTest),
       ]).then(([totals, daily, bySource]) => ({ totals, daily, bySource }))
     : Promise.resolve(null)
 
   const clarityPromise: Promise<ClarityResult> = hasClarityCreds()
-    ? getEventInsights(eventId, legacySlug, dateRangeToClarityDays(startDate, endDate))
+    ? getEventInsights(eventId, legacySlug, dateRangeToClarityDays(startDate, endDate), templatePaths)
     : Promise.resolve({ unavailable: true as const, reason: 'no_creds' as const })
 
   const adsPromise: Promise<{

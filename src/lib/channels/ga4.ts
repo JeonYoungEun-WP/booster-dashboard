@@ -266,21 +266,27 @@ export interface GA4PageTotals extends GA4Totals {
 function eventDimensionFilter(
   eventQueryParam: string,
   legacyPathPrefixes: string[],
+  templatePathPrefixes: string[],
   excludeTest?: boolean,
 ) {
+  const pathBeginsFilter = (value: string) => ({
+    filter: {
+      fieldName: 'pagePath',
+      stringFilter: { matchType: 'BEGINS_WITH' as const, value },
+    },
+  })
   const matchExpressions: unknown[] = [
+    // (a) 쿼리 파라미터 기반 — GA4 가 쿼리 보존 시 가장 정확
     {
       filter: {
         fieldName: 'pagePathPlusQueryString',
         stringFilter: { matchType: 'CONTAINS' as const, value: eventQueryParam },
       },
     },
-    ...legacyPathPrefixes.map((p) => ({
-      filter: {
-        fieldName: 'pagePath',
-        stringFilter: { matchType: 'BEGINS_WITH' as const, value: p },
-      },
-    })),
+    // (b) 레거시 슬러그 접두 — 구 URL 구조 호환
+    ...legacyPathPrefixes.map(pathBeginsFilter),
+    // (c) 템플릿 경로 접두 — GA4 쿼리 제거 설정 시 우회 매칭
+    ...templatePathPrefixes.map(pathBeginsFilter),
   ]
 
   const matchGroup = matchExpressions.length === 1
@@ -314,6 +320,7 @@ export async function getEventTotals(
   endDate: string,
   eventQueryParam: string,
   legacyPathPrefixes: string[],
+  templatePathPrefixes: string[],
   excludeTest?: boolean,
 ): Promise<GA4PageTotals> {
   const json = await runReport<GA4RawResponse>({
@@ -324,7 +331,7 @@ export async function getEventTotals(
       { name: 'conversions' }, { name: 'totalRevenue' },
       { name: 'engagementRate' }, { name: 'averageSessionDuration' },
     ],
-    ...eventDimensionFilter(eventQueryParam, legacyPathPrefixes, excludeTest),
+    ...eventDimensionFilter(eventQueryParam, legacyPathPrefixes, templatePathPrefixes, excludeTest),
   })
   const v = json.rows?.[0]?.metricValues ?? []
   return {
@@ -345,6 +352,7 @@ export async function getEventDaily(
   endDate: string,
   eventQueryParam: string,
   legacyPathPrefixes: string[],
+  templatePathPrefixes: string[],
   excludeTest?: boolean,
 ): Promise<GA4DailyRow[]> {
   const json = await runReport<GA4RawResponse>({
@@ -353,7 +361,7 @@ export async function getEventDaily(
     metrics: [{ name: 'sessions' }, { name: 'activeUsers' }, { name: 'conversions' }],
     orderBys: [{ dimension: { dimensionName: 'date' } }],
     limit: 1000,
-    ...eventDimensionFilter(eventQueryParam, legacyPathPrefixes, excludeTest),
+    ...eventDimensionFilter(eventQueryParam, legacyPathPrefixes, templatePathPrefixes, excludeTest),
   })
   return (json.rows ?? []).map((r) => ({
     date: formatGa4Date(r.dimensionValues[0].value),
@@ -369,6 +377,7 @@ export async function getEventBySource(
   endDate: string,
   eventQueryParam: string,
   legacyPathPrefixes: string[],
+  templatePathPrefixes: string[],
   excludeTest?: boolean,
 ): Promise<GA4SourceRow[]> {
   const json = await runReport<GA4RawResponse>({
@@ -381,7 +390,7 @@ export async function getEventBySource(
     metrics: [{ name: 'sessions' }, { name: 'conversions' }],
     orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
     limit: 50,
-    ...eventDimensionFilter(eventQueryParam, legacyPathPrefixes, excludeTest),
+    ...eventDimensionFilter(eventQueryParam, legacyPathPrefixes, templatePathPrefixes, excludeTest),
   })
   return (json.rows ?? []).map((r) => ({
     source: r.dimensionValues[0].value || '(direct)',

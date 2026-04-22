@@ -22,6 +22,18 @@ import { parseCampaignTag } from '../mapping'
 
 export const EVENT_1042_PERIOD = { startDate: '2026-03-01', endDate: '2026-03-31' }
 
+/**
+ * 이벤트 1042 가 사용하는 heypick 랜딩 템플릿 경로.
+ * 실제 URL: heypick.co.kr/tasks/8426/?event=1042&media=<x>
+ *
+ * GA4 가 쿼리 파라미터(`event=1042`)를 자동 제거해 저장하는 경우 대비,
+ * 이 템플릿 경로 접두로 BEGINS_WITH 매칭해 트래픽 포집.
+ *
+ * 같은 템플릿을 다른 이벤트도 공유하면 과다 집계 가능 — 운영 시
+ * 이벤트당 **고유 템플릿** 을 쓰거나, GA4 쿼리 보존 설정으로 해결.
+ */
+export const EVENT_1042_TEMPLATE_PATHS = ['/tasks/8426']
+
 export const EVENT_1042_TOTALS = {
   spend: 9_020_978,           // 광고주 전체 집계 (funnel.adSpend 에 이 값 사용)
   adSetSumSpend: 8_994_811,   // 10개 광고세트 합계 (테이블 합계)

@@ -9,7 +9,7 @@ import {
 // Phase 1 데모 이벤트 ID (캠페인 태그 시뮬레이션과 정합).
 // 실제 운영 이벤트 ID 매핑이 확정되면 Sidebar 가 최근 이벤트 리스트를 보여주도록 개편.
 const DEFAULT_EVENT_ID = '1042'
-const DEFAULT_LEGACY_SLUG = 'nexentire_rental'
+const DEFAULT_LEGACY_SLUG = 'doubleus'  // 더블어스 (event 1042 광고주)
 
 const NAV_TOP = [
   { href: '/', label: '대시보드', icon: LayoutDashboard },
