@@ -33,6 +33,12 @@ import {
   type CampaignPerformance, type ChannelPerformance,
 } from '@/src/lib/ad-data'
 import { buildLandingUrls, parseCampaignTag } from '@/src/lib/mapping'
+import {
+  getEvent1042Campaigns,
+  EVENT_1042_LEAD_TOTAL,
+  EVENT_1042_PERIOD,
+  EVENT_1042_TOTALS,
+} from '@/src/lib/real-data/event-1042'
 
 export const maxDuration = 30
 export const dynamic = 'force-dynamic'
@@ -119,6 +125,23 @@ export async function GET(req: NextRequest) {
     unmappedChannelSummary = adsResult.data.byChannel
   }
 
+  // ───── 실데이터 override: 이벤트 1042 (더블어스) — 2026-03 광고 실적 ─────
+  // 매체 API 자동 연동 전까지 광고주 제공 실수치 하드코딩. 기간 무관하게 주입.
+  let realDataNote: { eventId: string; period: { startDate: string; endDate: string }; advertiser: string } | null = null
+  let overrideLeadTotal: number | null = null
+  if (eventId === '1042') {
+    eventCampaigns = getEvent1042Campaigns()
+    if (trackingCode) {
+      eventCampaigns = eventCampaigns.filter((c) => c.tag?.trackingCode === trackingCode)
+    }
+    overrideLeadTotal = EVENT_1042_LEAD_TOTAL
+    realDataNote = {
+      eventId: '1042',
+      period: EVENT_1042_PERIOD,
+      advertiser: '더블어스',
+    }
+  }
+
   // 이벤트에 실제 매핑된 트래킹코드만 추출 — 리드·예약 더미가 이 코드들로 분배돼야 조인 성립.
   const eventTrackingCodes = Array.from(
     new Set(eventCampaigns.map((c) => c.tag?.trackingCode).filter(Boolean) as string[]),
@@ -130,6 +153,7 @@ export async function GET(req: NextRequest) {
     const stats = await getReservationStats(
       eventId, trackingCode, startDate, endDate, sessionByDate,
       eventTrackingCodes.length > 0 ? eventTrackingCodes : undefined,
+      overrideLeadTotal ?? undefined,
     )
     leadsResult = { ok: true, data: stats }
   } catch (e) {
@@ -217,6 +241,7 @@ export async function GET(req: NextRequest) {
     legacySlug: legacySlug ?? null,
     trackingCode: trackingCode ?? null,
     landingPaths,
+    realDataNote,
     funnel,
     byTrackingCode,
     ga4: ga4Result.ok

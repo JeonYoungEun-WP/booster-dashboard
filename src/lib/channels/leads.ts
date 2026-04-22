@@ -133,6 +133,8 @@ function dailyLeadCount(eventId: string, date: string, sessionCount?: number): n
  * @param candidateTrackingCodes - 실제 광고에 존재하는 트래킹코드 목록.
  *   주어지면 이 코드들로만 리드를 분배 (광고 ↔ 리드 ↔ 예약 조인 성립).
  *   없으면 이벤트ID 기반 더미 코드 생성 (조인 불가 경고).
+ * @param overrideTotalLeads - 실데이터 제공 이벤트의 총 리드 건수 강제 지정.
+ *   주어지면 세션 기반 계산 대신 이 숫자로 정확히 분배 (더미 균등 분산).
  */
 export async function getLeadsByEvent(
   eventId: string,
@@ -141,6 +143,7 @@ export async function getLeadsByEvent(
   endDate?: string,
   sessionByDate?: Record<string, number>,
   candidateTrackingCodes?: string[],
+  overrideTotalLeads?: number,
 ): Promise<LeadRow[]> {
   const start = startDate ?? new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10)
   const end = endDate ?? new Date().toISOString().slice(0, 10)
@@ -151,12 +154,24 @@ export async function getLeadsByEvent(
     : generateTrackingCodes(eventId, 5)
   const codes = trackingCode ? [trackingCode] : allCodes
 
+  // overrideTotalLeads 가 있으면 날짜별 균등 분배 (소수점은 앞날짜에 더 배분)
+  const overrideDailyCounts: Record<string, number> = {}
+  if (overrideTotalLeads !== undefined && overrideTotalLeads >= 0) {
+    const base = Math.floor(overrideTotalLeads / dates.length)
+    const remainder = overrideTotalLeads - base * dates.length
+    dates.forEach((d, i) => {
+      overrideDailyCounts[d] = base + (i < remainder ? 1 : 0)
+    })
+  }
+
   const leads: LeadRow[] = []
   let idCounter = 0
 
   for (const date of dates) {
     const sessions = sessionByDate?.[date]
-    const count = dailyLeadCount(eventId, date, sessions)
+    const count = overrideTotalLeads !== undefined
+      ? (overrideDailyCounts[date] ?? 0)
+      : dailyLeadCount(eventId, date, sessions)
 
     for (let i = 0; i < count; i++) {
       const seedBase = `${eventId}-${date}-${i}`
@@ -215,9 +230,11 @@ export async function getReservationStats(
   endDate?: string,
   sessionByDate?: Record<string, number>,
   candidateTrackingCodes?: string[],
+  overrideTotalLeads?: number,
 ): Promise<ReservationStats> {
   const leads = await getLeadsByEvent(
     eventId, trackingCode, startDate, endDate, sessionByDate, candidateTrackingCodes,
+    overrideTotalLeads,
   )
 
   const byStatusMap = new Map<LeadStatus, number>()

@@ -62,12 +62,19 @@ interface AdsSection {
   error?: string
 }
 
+interface RealDataNote {
+  eventId: string
+  period: { startDate: string; endDate: string }
+  advertiser: string
+}
+
 interface EventAnalyticsResponse {
   period: { startDate: string; endDate: string }
   eventId: string
   legacySlug: string | null
   trackingCode: string | null
   landingPaths: string[]
+  realDataNote: RealDataNote | null
   funnel: Funnel
   byTrackingCode: TrackingCodeRow[]
   ga4: GA4Section
@@ -251,11 +258,19 @@ export default function EventAnalyticsPage() {
             </div>
           </div>
 
-          {data?.leads.simulated && (
-            <div className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2.5 py-1.5 inline-block">
-              🧪 리드·예약 더미 데이터 — 실 DB 연동 대기 중 (Phase 2)
-            </div>
-          )}
+          <div className="flex flex-wrap gap-1.5">
+            {data?.realDataNote && (
+              <div className="text-[11px] text-blue-700 bg-blue-50 border border-blue-200 rounded-md px-2.5 py-1.5 inline-block">
+                📊 광고 실데이터: {data.realDataNote.advertiser} · {data.realDataNote.period.startDate} ~ {data.realDataNote.period.endDate}
+                <span className="text-blue-500/70 ml-1">(매체 자동 연동 전까지 하드코딩)</span>
+              </div>
+            )}
+            {data?.leads.simulated && (
+              <div className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2.5 py-1.5 inline-block">
+                🧪 리드·예약 더미 — 실 DB 연동 대기 (Phase 2)
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
