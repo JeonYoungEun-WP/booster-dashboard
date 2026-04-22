@@ -3,12 +3,22 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutDashboard, FileText, Images, Sparkles, Bell, Plug, Settings,
+  LayoutDashboard, FileText, Images, Sparkles, Bell, Plug, Settings, BarChart3,
 } from 'lucide-react'
+
+// Phase 1 데모 이벤트 ID (캠페인 태그 시뮬레이션과 정합).
+// 실제 운영 이벤트 ID 매핑이 확정되면 Sidebar 가 최근 이벤트 리스트를 보여주도록 개편.
+const DEFAULT_EVENT_ID = '1042'
+const DEFAULT_LEGACY_SLUG = 'nexentire_rental'
 
 const NAV_TOP = [
   { href: '/', label: '대시보드', icon: LayoutDashboard },
   { href: '/report', label: '리포트', icon: FileText },
+  {
+    href: `/analytics/${DEFAULT_EVENT_ID}?legacySlug=${DEFAULT_LEGACY_SLUG}`,
+    label: '이벤트',
+    icon: BarChart3,
+  },
   { href: '/creatives', label: '소재', icon: Images },
   { href: '/ai', label: 'AI', icon: Sparkles },
   { href: '/automation', label: '자동화', icon: Bell },
@@ -21,7 +31,11 @@ const NAV_BOTTOM = [
 
 function isActive(pathname: string, href: string) {
   if (href === '/') return pathname === '/'
-  return pathname === href || pathname.startsWith(href + '/')
+  // 첫 세그먼트로 활성 여부 판단 (쿼리스트링·동적 파라미터 고려)
+  const base = href.split('?')[0]                // 예: '/analytics/1042'
+  const topSegment = '/' + base.split('/')[1]    // 예: '/analytics'
+  if (!topSegment || topSegment === '/') return pathname === base
+  return pathname === base || pathname.startsWith(topSegment + '/') || pathname === topSegment
 }
 
 export function Sidebar() {

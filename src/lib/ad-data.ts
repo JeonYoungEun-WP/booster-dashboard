@@ -17,6 +17,7 @@
  */
 
 import { canCallMediaApi, isServerOnAllowedIp } from './ip-guard'
+import { parseCampaignTag, type CampaignTag } from './mapping'
 
 export type AdChannel = 'google' | 'meta' | 'naver' | 'kakao' | 'tiktok' | 'karrot'
 
@@ -69,6 +70,8 @@ export interface CampaignPerformance extends AdMetrics {
   channel: AdChannel
   campaignName: string
   status: 'ACTIVE' | 'PAUSED' | 'REMOVED'
+  /** 캠페인명에 박힌 #{eventId}_{trackingCode} 파싱 결과. 매치 없으면 null. */
+  tag: CampaignTag | null
 }
 
 export type CreativeFormat = 'image' | 'video' | 'carousel' | 'text'
@@ -473,6 +476,26 @@ export async function getCreativePerformance(opts: FetchOptions): Promise<Creati
   return result.sort((a, b) => b.cost - a.cost)
 }
 
+/**
+ * 데모용 이벤트 태그 생성 — 시뮬레이션 캠페인명에 #{eventId}_{trackingCode} 를
+ * 결정론적으로 주입해 이벤트 페이지에서도 매핑 로직을 엔드-투-엔드 검증 가능하게 함.
+ * 사용자가 합의한 포맷: "기존라벨 #{eventId}_{trackingCode}"
+ *
+ * 채널별로 분산된 트래킹코드를 만들되, 여러 캠페인이 같은 이벤트를 공유하도록 구성
+ * → 이벤트 페이지에서 광고세트(트래킹코드) 브레이크다운을 의미있게 볼 수 있음.
+ */
+const DEMO_EVENT_IDS = ['1042', '1159', '1203']
+
+function generateCampaignTag(channel: AdChannel, campaignName: string, idx: number): string {
+  const eventSeed = seedFromString(`evt-${channel}-${campaignName}-${idx}`)
+  const eventId = DEMO_EVENT_IDS[Math.floor(eventSeed * DEMO_EVENT_IDS.length)]
+  const codeSeed = seedFromString(`code-${channel}-${campaignName}-${idx}`)
+  // 7~10자 영숫자 트래킹코드
+  const raw = Math.floor(codeSeed * 0xffffffff).toString(36)
+  const code = (raw + 'KLMNpqrs').slice(0, 8)
+  return `#${eventId}_${code}`
+}
+
 /** 캠페인별 성과 */
 export async function getCampaignPerformance(opts: FetchOptions): Promise<CampaignPerformance[]> {
   const channels = opts.channels?.length ? opts.channels : ALL_CHANNELS
@@ -482,7 +505,9 @@ export async function getCampaignPerformance(opts: FetchOptions): Promise<Campai
   for (const ch of channels) {
     const campaigns = CAMPAIGN_TEMPLATES[ch]
     for (let i = 0; i < campaigns.length; i++) {
-      const name = campaigns[i]
+      const baseLabel = campaigns[i]
+      const tagToken = generateCampaignTag(ch, baseLabel, i)
+      const name = `${baseLabel} ${tagToken}`
       // 캠페인별로 트래픽을 비례 분할
       const share = [0.42, 0.25, 0.16, 0.10, 0.07][i] ?? 0.05
       const days = dates.map((d) => simulateChannelDay(ch, d))
@@ -496,12 +521,13 @@ export async function getCampaignPerformance(opts: FetchOptions): Promise<Campai
         }),
         { impressions: 0, clicks: 0, cost: 0, conversions: 0, conversionValue: 0 },
       )
-      const statusSeed = seedFromString(`status-${ch}-${name}`)
+      const statusSeed = seedFromString(`status-${ch}-${baseLabel}`)
       const status: CampaignPerformance['status'] = statusSeed > 0.85 ? 'PAUSED' : 'ACTIVE'
       result.push({
         channel: ch,
         campaignName: name,
         status,
+        tag: parseCampaignTag(name),
         ...calcDerivedMetrics(sum),
       })
     }

@@ -240,6 +240,136 @@ export async function getBySource(startDate: string, endDate: string): Promise<G
   }))
 }
 
+// ═════════════════════════════════════════════════════════════════════
+// 이벤트 (랜딩 페이지) 스코프 조회
+// pagePath 차원 필터로 특정 이벤트 랜딩 페이지의 데이터만 추출
+// ═════════════════════════════════════════════════════════════════════
+
+export interface GA4PageTotals extends GA4Totals {
+  screenPageViews: number
+}
+
+/**
+ * 이벤트 ID (+ 레거시 슬러그 옵션)로 GA4 pagePath 필터 생성.
+ * OR 조건 — 어느 경로로든 랜딩한 세션을 모두 포함.
+ */
+function pagePathFilter(paths: string[], excludeTest?: boolean) {
+  const urlExpressions = paths.map((p) => ({
+    filter: {
+      fieldName: 'pagePath',
+      stringFilter: { matchType: 'BEGINS_WITH' as const, value: p },
+    },
+  }))
+
+  const urlGroup = urlExpressions.length === 1
+    ? urlExpressions[0]
+    : { orGroup: { expressions: urlExpressions } }
+
+  if (!excludeTest) return { dimensionFilter: urlGroup }
+
+  // AND: URL 일치 AND Headless 브라우저가 아닐 것
+  return {
+    dimensionFilter: {
+      andGroup: {
+        expressions: [
+          urlGroup,
+          {
+            notExpression: {
+              filter: {
+                fieldName: 'browser',
+                stringFilter: { matchType: 'CONTAINS' as const, value: 'Headless' },
+              },
+            },
+          },
+        ],
+      },
+    },
+  }
+}
+
+/** 이벤트 랜딩 페이지 합계 (screenPageViews 포함) */
+export async function getEventTotals(
+  startDate: string,
+  endDate: string,
+  pagePaths: string[],
+  excludeTest?: boolean,
+): Promise<GA4PageTotals> {
+  const json = await runReport<GA4RawResponse>({
+    dateRanges: [{ startDate, endDate }],
+    metrics: [
+      { name: 'screenPageViews' },
+      { name: 'sessions' }, { name: 'activeUsers' }, { name: 'newUsers' },
+      { name: 'conversions' }, { name: 'totalRevenue' },
+      { name: 'engagementRate' }, { name: 'averageSessionDuration' },
+    ],
+    ...pagePathFilter(pagePaths, excludeTest),
+  })
+  const v = json.rows?.[0]?.metricValues ?? []
+  return {
+    screenPageViews: Number(v[0]?.value ?? 0),
+    sessions: Number(v[1]?.value ?? 0),
+    activeUsers: Number(v[2]?.value ?? 0),
+    newUsers: Number(v[3]?.value ?? 0),
+    conversions: Number(v[4]?.value ?? 0),
+    totalRevenue: Number(v[5]?.value ?? 0),
+    engagementRate: Number(v[6]?.value ?? 0),
+    averageSessionDuration: Number(v[7]?.value ?? 0),
+  }
+}
+
+/** 이벤트 랜딩 일자별 추이 */
+export async function getEventDaily(
+  startDate: string,
+  endDate: string,
+  pagePaths: string[],
+  excludeTest?: boolean,
+): Promise<GA4DailyRow[]> {
+  const json = await runReport<GA4RawResponse>({
+    dateRanges: [{ startDate, endDate }],
+    dimensions: [{ name: 'date' }],
+    metrics: [{ name: 'sessions' }, { name: 'activeUsers' }, { name: 'conversions' }],
+    orderBys: [{ dimension: { dimensionName: 'date' } }],
+    limit: 1000,
+    ...pagePathFilter(pagePaths, excludeTest),
+  })
+  return (json.rows ?? []).map((r) => ({
+    date: formatGa4Date(r.dimensionValues[0].value),
+    sessions: Number(r.metricValues[0].value),
+    activeUsers: Number(r.metricValues[1].value),
+    conversions: Number(r.metricValues[2].value),
+  }))
+}
+
+/** 이벤트 랜딩 소스/매체/캠페인별 */
+export async function getEventBySource(
+  startDate: string,
+  endDate: string,
+  pagePaths: string[],
+  excludeTest?: boolean,
+): Promise<GA4SourceRow[]> {
+  const json = await runReport<GA4RawResponse>({
+    dateRanges: [{ startDate, endDate }],
+    dimensions: [
+      { name: 'sessionSource' },
+      { name: 'sessionMedium' },
+      { name: 'sessionCampaignName' },
+    ],
+    metrics: [{ name: 'sessions' }, { name: 'conversions' }],
+    orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+    limit: 50,
+    ...pagePathFilter(pagePaths, excludeTest),
+  })
+  return (json.rows ?? []).map((r) => ({
+    source: r.dimensionValues[0].value || '(direct)',
+    medium: r.dimensionValues[1].value || '(none)',
+    campaign: r.dimensionValues[2].value || '(not set)',
+    sessions: Number(r.metricValues[0].value),
+    conversions: Number(r.metricValues[1].value),
+  }))
+}
+
+// ═════════════════════════════════════════════════════════════════════
+
 export async function healthCheck(): Promise<{ ok: boolean; error?: string; credsPresent: boolean; sessionsToday?: number }> {
   const credsPresent = hasGA4Creds()
   if (!credsPresent) return { ok: false, credsPresent, error: 'GA4 credentials not set (GA4_PROPERTY_ID + auth)' }
