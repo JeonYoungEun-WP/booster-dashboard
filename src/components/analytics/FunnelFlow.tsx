@@ -6,6 +6,8 @@ export interface FunnelStage {
   label: string
   value: number
   source?: DataSource
+  cpu?: number       // 획득당 비용 (광고비 ÷ value)
+  cpuLabel?: string  // 예: "CPA" / "결제당 광고비"
 }
 
 interface FunnelFlowProps {
@@ -61,6 +63,16 @@ export function FunnelFlow({
                 </p>
               ) : (
                 <p className="text-[11px] mt-1 text-muted-foreground">시작</p>
+              )}
+              {stage.cpu !== undefined && stage.cpu > 0 && (
+                <div className="mt-2 pt-2 border-t border-border/60">
+                  <p className="text-[10px] text-muted-foreground leading-tight">
+                    {stage.cpuLabel ?? '획득당 비용'}
+                  </p>
+                  <p className="text-sm font-semibold tabular-nums leading-tight">
+                    {fmtKRW(stage.cpu)}
+                  </p>
+                </div>
               )}
             </div>
           )
