@@ -62,7 +62,7 @@ export function FunnelFlow({ stages, trueROAS, adSpend, reservationRevenue }: Fu
           <p className="text-xl font-bold">{fmtKRW(reservationRevenue)}</p>
         </div>
         <div className={`${trueROAS >= 1 ? 'bg-emerald-50' : 'bg-amber-50'} -mx-1 px-3 rounded-lg`}>
-          <p className="text-[11px] text-muted-foreground">예약 ROAS (추정)</p>
+          <p className="text-[11px] text-muted-foreground" title="예약 매출 ÷ 광고비">예약 매출 배수</p>
           <p className={`text-2xl font-bold ${trueROAS >= 1 ? 'text-emerald-700' : 'text-amber-700'}`}>
             {(trueROAS * 100).toFixed(1)}%
           </p>

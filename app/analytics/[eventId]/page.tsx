@@ -23,11 +23,12 @@ interface Funnel {
   pageViews: number
   leads: number
   reservations: number
+  averageOrderValue: number
   reservationRevenue: number
   ctr: number
   cpc: number
-  cpl: number
-  cpa_reservation: number
+  cpa_lead: number               // 리드 획득당 비용
+  cpa_reservation: number        // 예약 획득당 비용
   cvr_click_to_session: number
   cvr_session_to_lead: number
   cvr_lead_to_reservation: number
@@ -111,14 +112,20 @@ function fmtDuration(seconds: number): string {
 const DEFAULT_VIEW = '기본' as const
 const DISABLED_VIEWS = ['기간 비교', '페이지 비교', '설문 통계']
 
+// 이벤트별 실데이터 기준 기간 — 기본 날짜 범위 힌트
+const EVENT_DEFAULT_DATE_RANGE: Record<string, { startDate: string; endDate: string }> = {
+  '1042': { startDate: '2026-03-01', endDate: '2026-03-31' },
+}
+
 export default function EventAnalyticsPage() {
   const params = useParams<{ eventId: string }>()
   const search = useSearchParams()
   const eventId = params?.eventId ?? ''
   const legacySlug = search?.get('legacySlug') ?? undefined
 
-  const [startDate, setStartDate] = useState(offsetDate(7))
-  const [endDate, setEndDate] = useState(offsetDate(0))
+  const initialRange = EVENT_DEFAULT_DATE_RANGE[eventId] ?? { startDate: offsetDate(7), endDate: offsetDate(0) }
+  const [startDate, setStartDate] = useState(initialRange.startDate)
+  const [endDate, setEndDate] = useState(initialRange.endDate)
   const [excludeTest, setExcludeTest] = useState(false)
   const [data, setData] = useState<EventAnalyticsResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -181,8 +188,10 @@ export default function EventAnalyticsPage() {
       { label: '리드', value: fmtNumber(f.leads), sub: '폼 제출 완료' },
       { label: '예약', value: fmtNumber(f.reservations), sub: '상담 통화 완료', accent: 'text-emerald-600' },
       { label: '광고비', value: fmtKRW(f.adSpend) },
-      { label: 'CPL', value: f.cpl > 0 ? fmtKRW(f.cpl) : '—', sub: '리드당 비용' },
-      { label: 'CPA(예약)', value: f.cpa_reservation > 0 ? fmtKRW(f.cpa_reservation) : '—', sub: '예약당 비용' },
+      // CPA (a=리드 획득): 리드 1건 획득에 든 광고비
+      { label: 'CPA', value: f.cpa_lead > 0 ? fmtKRW(f.cpa_lead) : '—', sub: '리드 획득당 비용' },
+      // 예약 획득 비용: 예약 1건 확정에 든 광고비 (매출당 비용을 구체적 용어로)
+      { label: '예약 획득 비용', value: f.cpa_reservation > 0 ? fmtKRW(f.cpa_reservation) : '—', sub: '예약 1건당 광고비' },
       { label: '평균 체류', value: fmtDuration(avgDuration) },
     ]
   }, [data])

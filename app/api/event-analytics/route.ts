@@ -38,6 +38,7 @@ import {
   EVENT_1042_LEAD_TOTAL,
   EVENT_1042_PERIOD,
   EVENT_1042_TOTALS,
+  EVENT_1042_REVENUE,
 } from '@/src/lib/real-data/event-1042'
 
 export const maxDuration = 30
@@ -161,20 +162,30 @@ export async function GET(req: NextRequest) {
   }
 
   // ───── 퍼널 수치 계산 ─────
-  const adSpend = eventCampaigns.reduce((s, c) => s + c.cost, 0)
+  // 기본: 광고세트 합산값 사용.
+  // 이벤트 1042 는 광고주 전체 집계값 (광고세트 합계 + 미매핑) 로 override.
+  let adSpend = eventCampaigns.reduce((s, c) => s + c.cost, 0)
   const impressions = eventCampaigns.reduce((s, c) => s + c.impressions, 0)
   const clicks = eventCampaigns.reduce((s, c) => s + c.clicks, 0)
+
+  if (eventId === '1042') {
+    adSpend = EVENT_1042_TOTALS.spend   // 9,020,978 (광고주 전체 집계)
+  }
 
   const ga4Totals = ga4Result.ok ? ga4Result.data?.totals : undefined
   const sessions = ga4Totals?.sessions ?? 0
   const pageViews = ga4Totals?.screenPageViews ?? 0
 
   const leads = leadsResult.ok ? leadsResult.data.leadCount : 0
-  const reservations = leadsResult.ok ? leadsResult.data.reservationCount : 0
-
-  // 예약 1건의 추정 가치 (필요 시 향후 opts 로 받기). 시뮬레이션 기본값 = 280,000원
-  const RESERVATION_VALUE = 280_000
-  const reservationRevenue = reservations * RESERVATION_VALUE
+  // 예약 수·객단가·매출: 이벤트 1042 는 실데이터(더미) 고정,
+  // 그 외 이벤트는 리드 어댑터 결과 + 기본 객단가.
+  let reservations = leadsResult.ok ? leadsResult.data.reservationCount : 0
+  let averageOrderValue = 280_000  // 기본 객단가
+  if (eventId === '1042') {
+    reservations = EVENT_1042_REVENUE.reservationCount    // 13건
+    averageOrderValue = EVENT_1042_REVENUE.averageOrderValue  // 1,300,000원
+  }
+  const reservationRevenue = reservations * averageOrderValue
 
   const funnel = {
     adSpend,
@@ -184,11 +195,12 @@ export async function GET(req: NextRequest) {
     pageViews,
     leads,
     reservations,
+    averageOrderValue,
     reservationRevenue,
     ctr:     impressions > 0 ? (clicks / impressions) * 100 : 0,
     cpc:     clicks > 0      ? adSpend / clicks            : 0,
-    cpl:     leads > 0       ? adSpend / leads             : 0,
-    cpa_reservation: reservations > 0 ? adSpend / reservations : 0,
+    cpa_lead:   leads > 0       ? adSpend / leads          : 0,  // 리드 획득당 비용
+    cpa_reservation: reservations > 0 ? adSpend / reservations : 0,  // 예약당 비용
     cvr_click_to_session:   clicks > 0 ? sessions / clicks : 0,
     cvr_session_to_lead:    sessions > 0 ? leads / sessions : 0,
     cvr_lead_to_reservation: leads > 0 ? reservations / leads : 0,
@@ -226,12 +238,34 @@ export async function GET(req: NextRequest) {
       })
     }
   }
+  // 이벤트 1042 의 경우 총 예약 수가 13 으로 강제되므로, 트래킹코드별 예약 분배를
+  // 리드 비중에 따라 재계산 (전체 reservation sum === 13 이 되도록).
+  if (eventId === '1042') {
+    const entries = Array.from(codeMap.values())
+    const totalLeadsByCode = entries.reduce((s, e) => s + e.leads, 0)
+    const targetReservations = EVENT_1042_REVENUE.reservationCount
+    if (totalLeadsByCode > 0) {
+      let allocated = 0
+      const sortedByLeads = [...entries].sort((a, b) => b.leads - a.leads)
+      for (let i = 0; i < sortedByLeads.length; i++) {
+        const row = sortedByLeads[i]
+        const isLast = i === sortedByLeads.length - 1
+        // 마지막 행은 차액으로 보정해 합계 정확히 13 유지
+        const alloc = isLast
+          ? targetReservations - allocated
+          : Math.round((row.leads / totalLeadsByCode) * targetReservations)
+        row.reservations = Math.max(0, alloc)
+        allocated += row.reservations
+      }
+    }
+  }
+
   const byTrackingCode = Array.from(codeMap.values())
     .map((r) => ({
       ...r,
-      cpl: r.leads > 0 ? r.adSpend / r.leads : 0,
-      cpa_reservation: r.reservations > 0 ? r.adSpend / r.reservations : 0,
-      reservationROAS: r.adSpend > 0 ? (r.reservations * RESERVATION_VALUE) / r.adSpend : 0,
+      cpa_lead: r.leads > 0 ? r.adSpend / r.leads : 0,               // 리드 획득당 비용
+      costPerReservation: r.reservations > 0 ? r.adSpend / r.reservations : 0,  // 예약 1건당 광고비
+      reservationROAS: r.adSpend > 0 ? (r.reservations * averageOrderValue) / r.adSpend : 0,
     }))
     .sort((a, b) => b.adSpend - a.adSpend)
 

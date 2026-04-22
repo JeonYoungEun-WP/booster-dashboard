@@ -23,8 +23,8 @@ import { parseCampaignTag } from '../mapping'
 export const EVENT_1042_PERIOD = { startDate: '2026-03-01', endDate: '2026-03-31' }
 
 export const EVENT_1042_TOTALS = {
-  spend: 9_020_978,           // 광고주 전체 집계
-  adSetSumSpend: 8_994_811,   // 10개 광고세트 합계
+  spend: 9_020_978,           // 광고주 전체 집계 (funnel.adSpend 에 이 값 사용)
+  adSetSumSpend: 8_994_811,   // 10개 광고세트 합계 (테이블 합계)
   conversions: 428,           // 광고 측 전환 카운트
   acquiredLeads: 441,         // 리드 DB 실 제출 수
   invalidLeads: 82,           // 무효 DB
@@ -32,6 +32,13 @@ export const EVENT_1042_TOTALS = {
   impressions: 260_137,
   clicks: 7_829,
   cpa: 21_077,                // 전환 단가
+}
+
+// 매출 추정용 — 사용자 제공 더미 (매체 연동 전까지)
+export const EVENT_1042_REVENUE = {
+  reservationCount: 13,            // 예약 확정 건수 (실 예약 데이터 대체 더미)
+  averageOrderValue: 1_300_000,    // 객단가
+  totalRevenue: 13 * 1_300_000,    // 16,900,000
 }
 
 interface RawAdSet {
