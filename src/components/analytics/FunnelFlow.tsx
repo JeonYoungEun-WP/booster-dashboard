@@ -14,6 +14,7 @@ interface FunnelFlowProps {
   stages: FunnelStage[]       // 위→아래 순서: 노출·클릭·세션·리드·방문예약·결제
   trueROAS: number
   adSpend: number
+  averageOrderValue: number   // 객단가 (추정)
   reservationRevenue: number
   finalStageLabel?: string
 }
@@ -29,7 +30,7 @@ function fmtPct(ratio: number): string {
 }
 
 export function FunnelFlow({
-  stages, trueROAS, adSpend, reservationRevenue, finalStageLabel = '결제',
+  stages, trueROAS, adSpend, averageOrderValue, reservationRevenue, finalStageLabel = '결제',
 }: FunnelFlowProps) {
   return (
     <section className="rounded-xl border border-border bg-card p-5">
@@ -79,14 +80,21 @@ export function FunnelFlow({
         })}
       </div>
 
-      {/* 하단: 광고비 · 매출 · ROAS */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-border">
+      {/* 하단: 광고비 · 객단가(추정) · 매출(추정) · ROAS */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-border">
         <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
           <div className="flex items-center justify-between gap-1.5 mb-0.5">
             <p className="text-[11px] text-slate-500">광고비</p>
             <SourceBadge source="admin" />
           </div>
           <p className="text-xl font-bold text-slate-900">{fmtKRW(adSpend)}</p>
+        </div>
+        <div className="rounded-lg bg-emerald-50/40 border border-emerald-200 p-3">
+          <div className="flex items-center justify-between gap-1.5 mb-0.5">
+            <p className="text-[11px] text-emerald-700">객단가 (추정)</p>
+            <SourceBadge source="dummy" />
+          </div>
+          <p className="text-xl font-bold text-emerald-800">{fmtKRW(averageOrderValue)}</p>
         </div>
         <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3">
           <div className="flex items-center justify-between gap-1.5 mb-0.5">

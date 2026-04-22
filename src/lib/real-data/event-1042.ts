@@ -19,6 +19,9 @@
 
 import type { CampaignPerformance } from '../ad-data'
 import { parseCampaignTag } from '../mapping'
+import { EVENT_1042_LEAD_TIMESTAMPS, EVENT_1042_LEAD_COUNT } from './event-1042-leads'
+
+export { EVENT_1042_LEAD_TIMESTAMPS, EVENT_1042_LEAD_COUNT }
 
 export const EVENT_1042_PERIOD = { startDate: '2026-03-01', endDate: '2026-03-31' }
 
@@ -35,15 +38,15 @@ export const EVENT_1042_PERIOD = { startDate: '2026-03-01', endDate: '2026-03-31
 export const EVENT_1042_TEMPLATE_PATHS = ['/tasks/8426']
 
 export const EVENT_1042_TOTALS = {
-  spend: 9_020_978,           // 광고주 전체 집계 (funnel.adSpend 에 이 값 사용)
-  adSetSumSpend: 8_994_811,   // 10개 광고세트 합계 (테이블 합계)
-  conversions: 428,           // 광고 측 전환 카운트
-  acquiredLeads: 441,         // 리드 DB 실 제출 수
-  invalidLeads: 82,           // 무효 DB
-  validLeads: 359,            // 441 - 82
+  spend: 9_020_978,                          // 광고주 전체 집계 (funnel.adSpend 에 이 값 사용)
+  adSetSumSpend: 8_994_811,                  // 10개 광고세트 합계 (테이블 합계)
+  conversions: 428,                          // 광고 측 전환 카운트
+  acquiredLeads: EVENT_1042_LEAD_COUNT,      // 실 리드 DB 제출 수 (타임스탬프 배열 길이)
+  invalidLeads: 82,                          // 무효 DB (광고주 집계 기준)
+  validLeads: EVENT_1042_LEAD_COUNT - 82,
   impressions: 260_137,
   clicks: 7_829,
-  cpa: 21_077,                // 전환 단가
+  cpa: 21_077,                               // 전환 단가 (광고주 집계)
 }
 
 // 매출 추정용 — 사용자 제공 더미 (매체 연동 전까지)
@@ -131,8 +134,8 @@ export function getEvent1042LeadDistribution(): Array<{
   }))
 }
 
-/** 이벤트 1042 에 할당할 리드 총 건수 (실 DB 제출 수) */
-export const EVENT_1042_LEAD_TOTAL = EVENT_1042_TOTALS.acquiredLeads
+/** 이벤트 1042 에 할당할 리드 총 건수 (실 DB 제출 수 = 타임스탬프 개수) */
+export const EVENT_1042_LEAD_TOTAL = EVENT_1042_LEAD_COUNT
 
 /**
  * 쿼리 날짜 범위와 2026-03 월 데이터 기간의 겹침 여부.

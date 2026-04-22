@@ -40,6 +40,7 @@ import {
   EVENT_1042_TOTALS,
   EVENT_1042_REVENUE,
   EVENT_1042_TEMPLATE_PATHS,
+  EVENT_1042_LEAD_TIMESTAMPS,
 } from '@/src/lib/real-data/event-1042'
 
 export const maxDuration = 30
@@ -155,10 +156,11 @@ export async function GET(req: NextRequest) {
   )
 
   // ───── 리드·예약 (더미) — 광고 결과의 트래킹코드 세트로 분배 ─────
-  // 이벤트 1042 는 예약 13건도 override (주말 10% 가중치로 분배)
+  // 이벤트 1042: 실 리드 타임스탬프 + 예약 13건 override (주말 가중치 분배)
   const overrideReservationTotal = eventId === '1042'
     ? EVENT_1042_REVENUE.reservationCount
     : undefined
+  const realTimestamps = eventId === '1042' ? EVENT_1042_LEAD_TIMESTAMPS : undefined
 
   let leadsResult: AdapterResult<ReservationStats>
   try {
@@ -167,6 +169,7 @@ export async function GET(req: NextRequest) {
       eventTrackingCodes.length > 0 ? eventTrackingCodes : undefined,
       overrideLeadTotal ?? undefined,
       overrideReservationTotal,
+      realTimestamps,
     )
     leadsResult = { ok: true, data: stats }
   } catch (e) {

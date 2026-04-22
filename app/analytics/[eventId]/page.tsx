@@ -302,6 +302,7 @@ export default function EventAnalyticsPage() {
               stages={funnelStages}
               trueROAS={data.funnel.trueROAS_estimated}
               adSpend={data.funnel.adSpend}
+              averageOrderValue={data.funnel.averageOrderValue}
               reservationRevenue={data.funnel.reservationRevenue}
             />
 

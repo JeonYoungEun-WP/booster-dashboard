@@ -178,6 +178,8 @@ function distributeWithWeekendFactor(
  *   주어지면 주말 10% 가중치로 날짜별 분배 (합계 정확).
  * @param overrideTotalReservations - 예약 총 건수 강제 지정.
  *   주어지면 예약완료 상태를 N건만 할당 (주말 가중치 분배, 리드 집합 부분집합).
+ * @param realTimestamps - 실제 리드 발생 타임스탬프 배열 ('YYYY-MM-DD HH:MM:SS' 형식).
+ *   주어지면 overrideTotalLeads 대신 이 타임스탬프들을 그대로 사용 (가장 정확).
  */
 export async function getLeadsByEvent(
   eventId: string,
@@ -188,6 +190,7 @@ export async function getLeadsByEvent(
   candidateTrackingCodes?: string[],
   overrideTotalLeads?: number,
   overrideTotalReservations?: number,
+  realTimestamps?: string[],
 ): Promise<LeadRow[]> {
   const start = startDate ?? new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10)
   const end = endDate ?? new Date().toISOString().slice(0, 10)
@@ -198,12 +201,24 @@ export async function getLeadsByEvent(
     : generateTrackingCodes(eventId, 5)
   const codes = trackingCode ? [trackingCode] : allCodes
 
-  // overrideTotalLeads → 주말 가중치 분배
-  const overrideLeadsDaily: Record<string, number> = overrideTotalLeads !== undefined
+  // realTimestamps 제공 시 날짜별 타임스탬프 그룹 (가장 우선)
+  const timestampsByDate: Record<string, string[]> | null = realTimestamps && realTimestamps.length > 0
+    ? (() => {
+        const m: Record<string, string[]> = {}
+        for (const ts of realTimestamps) {
+          const d = ts.slice(0, 10)
+          ;(m[d] ??= []).push(ts)
+        }
+        return m
+      })()
+    : null
+
+  // overrideTotalLeads → 주말 가중치 분배 (realTimestamps 없을 때만)
+  const overrideLeadsDaily: Record<string, number> = (!timestampsByDate && overrideTotalLeads !== undefined)
     ? distributeWithWeekendFactor(overrideTotalLeads, dates, `leads-${eventId}`)
     : {}
 
-  // overrideTotalReservations → 날짜별 예약 건수 사전 계산 (주말 가중치)
+  // overrideTotalReservations → 날짜별 예약 건수 (주말 가중치)
   const overrideReservationsDaily: Record<string, number> = overrideTotalReservations !== undefined
     ? distributeWithWeekendFactor(overrideTotalReservations, dates, `res-${eventId}`)
     : {}
@@ -213,9 +228,12 @@ export async function getLeadsByEvent(
 
   for (const date of dates) {
     const sessions = sessionByDate?.[date]
-    const count = overrideTotalLeads !== undefined
-      ? (overrideLeadsDaily[date] ?? 0)
-      : dailyLeadCount(eventId, date, sessions)
+    const realTs = timestampsByDate?.[date] ?? []
+    const count = timestampsByDate
+      ? realTs.length
+      : overrideTotalLeads !== undefined
+        ? (overrideLeadsDaily[date] ?? 0)
+        : dailyLeadCount(eventId, date, sessions)
 
     // 이 날짜에 '예약완료' 로 강제 할당할 리드 수 (override 모드에서만)
     const reservationsForDate = overrideTotalReservations !== undefined
@@ -258,9 +276,17 @@ export async function getLeadsByEvent(
       const NAMES = ['김', '이', '박', '최', '정', '강', '조', '윤', '장', '임']
       const name = NAMES[Math.floor(sName * NAMES.length)] + '*'
 
-      const hour = Math.floor(sTime * 14) + 8      // 업무시간 8~22
-      const minute = Math.floor((sTime * 13) % 60)
-      const createdAt = `${date}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00+09:00`
+      // createdAt: 실 타임스탬프 있으면 사용, 없으면 시드 기반 생성
+      let createdAt: string
+      const realTsForThisLead = realTs[i]
+      if (realTsForThisLead) {
+        // '2026-03-01 02:43:00' → '2026-03-01T02:43:00+09:00'
+        createdAt = realTsForThisLead.replace(' ', 'T') + '+09:00'
+      } else {
+        const hour = Math.floor(sTime * 14) + 8      // 업무시간 8~22
+        const minute = Math.floor((sTime * 13) % 60)
+        createdAt = `${date}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00+09:00`
+      }
 
       const reservedAt = status === '예약완료'
         ? new Date(new Date(createdAt).getTime() + Math.floor(rand(sStatus, 1, 48)) * 3600_000).toISOString()
@@ -296,10 +322,11 @@ export async function getReservationStats(
   candidateTrackingCodes?: string[],
   overrideTotalLeads?: number,
   overrideTotalReservations?: number,
+  realTimestamps?: string[],
 ): Promise<ReservationStats> {
   const leads = await getLeadsByEvent(
     eventId, trackingCode, startDate, endDate, sessionByDate, candidateTrackingCodes,
-    overrideTotalLeads, overrideTotalReservations,
+    overrideTotalLeads, overrideTotalReservations, realTimestamps,
   )
 
   const byStatusMap = new Map<LeadStatus, number>()
