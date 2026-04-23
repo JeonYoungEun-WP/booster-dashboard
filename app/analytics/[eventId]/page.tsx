@@ -6,7 +6,12 @@ import { RefreshCw } from 'lucide-react'
 import { DateRangePicker } from '@/src/components/ui/DateRangePicker'
 import { FunnelFlow } from '@/src/components/analytics/FunnelFlow'
 import { KpiGrid } from '@/src/components/analytics/KpiGrid'
+import { KpiCardGrid, type KpiCardItem } from '@/src/components/analytics/KpiCardGrid'
 import { TrendChart, type TrendPoint } from '@/src/components/analytics/TrendChart'
+import {
+  TrendGranularityToggle, aggregateTrend, type TrendGranularity,
+} from '@/src/components/analytics/TrendGranularityToggle'
+import { ChannelDonut, type ChannelDonutRow } from '@/src/components/analytics/ChannelDonut'
 import { TrackingCodeTable, type TrackingCodeRow } from '@/src/components/analytics/TrackingCodeTable'
 import { SourceTable } from '@/src/components/analytics/SourceTable'
 import { FunnelMetricsTable, type FunnelStageRow } from '@/src/components/analytics/FunnelMetricsTable'
@@ -150,38 +155,45 @@ export default function EventAnalyticsPage() {
   const [endDate, setEndDate] = useState(initialRange.endDate)
   const [excludeTest, setExcludeTest] = useState(false)
   const [data, setData] = useState<EventAnalyticsResponse | null>(null)
+  const [prevData, setPrevData] = useState<EventAnalyticsResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [refreshTick, setRefreshTick] = useState(0)
+  const [granularity, setGranularity] = useState<TrendGranularity>('day')
 
   useEffect(() => {
     if (!eventId) return
     setLoading(true)
     setError(null)
-    const qs = new URLSearchParams({
-      eventId,
-      startDate,
-      endDate,
-    })
-    if (legacySlug) qs.set('legacySlug', legacySlug)
-    if (excludeTest) qs.set('excludeTest', '1')
 
-    fetch(`/api/event-analytics?${qs.toString()}`)
-      .then(async (r) => {
-        if (!r.ok) {
-          const err = await r.json().catch(() => ({ error: `HTTP ${r.status}` }))
-          setError(err.error || err.hint || `HTTP ${r.status}`)
-          return null
-        }
+    // 전기 기간 계산 (같은 길이만큼 shift)
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    const diffDays = Math.floor((end.getTime() - start.getTime()) / 86400000) + 1
+    const prevEnd = new Date(start.getTime() - 86400000).toISOString().slice(0, 10)
+    const prevStart = new Date(start.getTime() - diffDays * 86400000).toISOString().slice(0, 10)
+
+    const buildQs = (sd: string, ed: string) => {
+      const qs = new URLSearchParams({ eventId, startDate: sd, endDate: ed })
+      if (legacySlug) qs.set('legacySlug', legacySlug)
+      if (excludeTest) qs.set('excludeTest', '1')
+      return qs.toString()
+    }
+
+    const fetchOne = (sd: string, ed: string) =>
+      fetch(`/api/event-analytics?${buildQs(sd, ed)}`).then(async (r) => {
+        if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? `HTTP ${r.status}`)
         return r.json() as Promise<EventAnalyticsResponse>
       })
-      .then((d) => setData(d))
+
+    Promise.all([fetchOne(startDate, endDate), fetchOne(prevStart, prevEnd).catch(() => null)])
+      .then(([cur, prev]) => { setData(cur); setPrevData(prev) })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false))
   }, [eventId, startDate, endDate, excludeTest, legacySlug, refreshTick])
 
-  // 추이 데이터 = GA4 daily sessions + leads.byDate 에서 리드·예약 join
-  const trendData: TrendPoint[] = useMemo(() => {
+  // 추이 데이터 = GA4 daily sessions + leads.byDate 에서 리드·예약 join (일별 원본)
+  const trendDaily: TrendPoint[] = useMemo(() => {
     if (!data) return []
     const ga4Daily = data.ga4.daily ?? []
     const leadsByDate = new Map(data.leads.byDate?.map((r) => [r.date, r]) ?? [])
@@ -199,6 +211,12 @@ export default function EventAnalyticsPage() {
       }
     })
   }, [data])
+
+  // granularity(일/주/월) 집계
+  const trendData: TrendPoint[] = useMemo(
+    () => aggregateTrend(trendDaily, granularity),
+    [trendDaily, granularity],
+  )
 
   const kpi = useMemo(() => {
     if (!data) return []
@@ -251,6 +269,70 @@ export default function EventAnalyticsPage() {
     }
     return out
   }, [data])
+
+  // 전기 대비 증감률 KPI 카드 (상단 6열)
+  const kpiCardItems = useMemo<KpiCardItem[]>(() => {
+    if (!data) return []
+    const f = data.funnel
+    const p = prevData?.funnel
+    const ratio = (num: number, den: number) => (den > 0 ? num / den : 0)
+    const ctr = ratio(f.clicks, f.impressions)
+    const sessPerClick = ratio(f.sessions, f.clicks)
+    const leadPerSession = ratio(f.leads, f.sessions)
+    const reservePerLead = ratio(f.visitReservations, f.leads)
+    const is3550 = eventId === '3550'
+    const reserveLabel = is3550 ? '예약' : '방문예약'
+    return [
+      {
+        label: '노출', value: f.impressions, prevValue: p?.impressions ?? null,
+        format: 'number', source: 'admin',
+      },
+      {
+        label: '클릭', value: f.clicks, prevValue: p?.clicks ?? null,
+        format: 'number', source: 'admin',
+        conversion: `노출 → ${(ctr * 100).toFixed(2)}%`,
+        unitPrice: `CPC ₩${Math.round(f.cpc).toLocaleString('ko-KR')}`,
+      },
+      {
+        label: '세션', value: f.sessions, prevValue: p?.sessions ?? null,
+        format: 'number', source: 'ga',
+        conversion: `클릭 → ${(sessPerClick * 100).toFixed(2)}%`,
+      },
+      {
+        label: '리드', value: f.leads, prevValue: p?.leads ?? null,
+        format: 'number', source: 'admin', highlight: 'lead',
+        conversion: `세션 → ${(leadPerSession * 100).toFixed(2)}%`,
+        unitPrice: `CPA ₩${Math.round(f.cpa_lead).toLocaleString('ko-KR')}`,
+      },
+      {
+        label: reserveLabel, value: f.visitReservations, prevValue: p?.visitReservations ?? null,
+        format: 'number', source: 'dummy',
+        conversion: `리드 → ${(reservePerLead * 100).toFixed(2)}%`,
+        unitPrice: `₩${Math.round(f.cpa_visitReservation).toLocaleString('ko-KR')}`,
+      },
+      {
+        label: 'ROAS', value: f.trueROAS_estimated, prevValue: p?.trueROAS_estimated ?? null,
+        format: 'percent', source: 'admin', highlight: 'roas',
+        deltaAsPoints: true,
+        unitPrice: `매출 ₩${Math.round(f.reservationRevenue).toLocaleString('ko-KR')}`,
+      },
+    ]
+  }, [data, prevData, eventId])
+
+  // 채널 도넛 rows — byChannel + sessionsByChannel 합성
+  const channelDonutRows = useMemo<ChannelDonutRow[]>(() => {
+    if (!data) return []
+    return (data.byChannel ?? []).map((c) => {
+      const sessions = sessionsByChannel[c.channel] ?? 0
+      return {
+        channel: c.channel,
+        leads: c.leads,
+        adSpend: c.adSpend,
+        sessions,
+        cvr: sessions > 0 ? c.leads / sessions : 0,
+      }
+    })
+  }, [data, sessionsByChannel])
 
   // 퍼널 성과 요약 테이블용 — 각 단계의 수/전환율/전환 단가 그룹
   const funnelMetricRows = useMemo<FunnelStageRow[]>(() => {
@@ -427,6 +509,9 @@ export default function EventAnalyticsPage() {
 
         {data && (
           <>
+            {/* 상단: 6열 KPI 그리드 (전기 대비 증감률) */}
+            <KpiCardGrid items={kpiCardItems} />
+
             <FunnelFlow
               stages={funnelStages}
               trueROAS={data.funnel.trueROAS_estimated}
@@ -437,7 +522,14 @@ export default function EventAnalyticsPage() {
 
             <KpiGrid items={kpi} />
 
-            <TrendChart data={trendData} />
+            {/* 추이 차트 + 채널 도넛 (2컬럼, lg 미만에서는 1열) */}
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5">
+              <TrendChart
+                data={trendData}
+                actions={<TrendGranularityToggle value={granularity} onChange={setGranularity} />}
+              />
+              <ChannelDonut rows={channelDonutRows} />
+            </div>
 
             <TrackingCodeTable rows={data.byTrackingCode} />
 

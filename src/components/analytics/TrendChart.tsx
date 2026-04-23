@@ -13,14 +13,21 @@ export interface TrendPoint {
 
 interface TrendChartProps {
   data: TrendPoint[]
+  /** 헤더 오른쪽에 렌더할 커스텀 액션(예: 일/주/월 토글). */
+  actions?: React.ReactNode
+  /** 타이틀 아래 서브 텍스트 덮어쓰기. */
+  subtitle?: string
 }
 
-export function TrendChart({ data }: TrendChartProps) {
+export function TrendChart({ data, actions, subtitle }: TrendChartProps) {
   return (
     <section className="rounded-xl border border-border bg-card p-4">
-      <div className="flex items-baseline justify-between mb-3">
-        <h2 className="text-sm font-semibold">일자별 추이</h2>
-        <span className="text-xs text-muted-foreground">세션(선) · 리드·예약(막대)</span>
+      <div className="flex items-center justify-between mb-3 gap-2">
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold">일자별 추이</h2>
+          <p className="text-xs text-muted-foreground">{subtitle ?? '세션(선) · 리드·예약(막대)'}</p>
+        </div>
+        {actions && <div className="shrink-0">{actions}</div>}
       </div>
       <div style={{ height: 320 }}>
         <ResponsiveContainer width="100%" height="100%">
