@@ -724,7 +724,7 @@ export async function buildReportPptx({
           options: {
             barDir: 'col',
             barGrouping: 'clustered',
-            chartColors: [COLOR_WARN, COLOR_SUCCESS],
+            chartColors: ['65CC91', '2A9E6F'],  // 리드 = 라이트 그린, 예약 = 다크 그린
           },
         },
         {

@@ -538,9 +538,9 @@ function renderDailyTrend(data: EventAnalyticsResponse, total: number, periodLab
     return { y, label }
   })
 
-  const COLOR_SESSION = COLOR_BRAND_DARK    // boosterMAX 딥 블루
-  const COLOR_LEAD = COLOR_WARN             // 앰버
-  const COLOR_RESERVATION = COLOR_SUCCESS   // 브랜드 그린
+  const COLOR_SESSION = '#3983E2'           // 브랜드 딥 블루 (세션 라인)
+  const COLOR_LEAD = '#65CC91'              // 브랜드 라이트 그린 (리드 막대)
+  const COLOR_RESERVATION = '#2A9E6F'       // 브랜드 다크 그린 (예약 막대)
 
   const el = createBaseSlide()
   if (rows.length === 0) {

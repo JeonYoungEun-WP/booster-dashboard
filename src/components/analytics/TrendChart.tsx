@@ -47,20 +47,20 @@ export function TrendChart({ data, actions, subtitle }: TrendChartProps) {
               yAxisId="right"
               orientation="right"
               tick={{ fontSize: 13 }}
-              label={{ value: '리드·예약', angle: 90, position: 'insideRight', fontSize: 13, fill: '#f59e0b' }}
+              label={{ value: '리드·예약', angle: 90, position: 'insideRight', fontSize: 13, fill: '#3ABA85' }}
             />
             <Tooltip
               contentStyle={{ fontSize: 14, borderRadius: 8, border: '1px solid #e5e8eb' }}
               labelFormatter={(label) => String(label)}
             />
             <Legend wrapperStyle={{ fontSize: 13 }} />
-            {/* 리드·예약: 우측 Y축 · 막대 */}
+            {/* 리드·예약: 우측 Y축 · 막대 (브랜드 그린 계열 — 디자인 가이드) */}
             <Bar
               yAxisId="right"
               dataKey="leads"
               name="리드"
-              fill="#f59e0b"
-              fillOpacity={0.75}
+              fill="#65CC91"
+              fillOpacity={0.9}
               barSize={14}
               radius={[2, 2, 0, 0]}
             />
@@ -68,8 +68,8 @@ export function TrendChart({ data, actions, subtitle }: TrendChartProps) {
               yAxisId="right"
               dataKey="reservations"
               name="예약"
-              fill="#10b981"
-              fillOpacity={0.9}
+              fill="#2A9E6F"
+              fillOpacity={0.95}
               barSize={14}
               radius={[2, 2, 0, 0]}
             />
