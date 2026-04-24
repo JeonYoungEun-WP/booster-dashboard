@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, FileText } from 'lucide-react'
 import { DateRangePicker } from '@/src/components/ui/DateRangePicker'
 import { FunnelFlow } from '@/src/components/analytics/FunnelFlow'
 import { KpiGrid } from '@/src/components/analytics/KpiGrid'
@@ -15,6 +15,7 @@ import { TrackingCodeTable, type TrackingCodeRow } from '@/src/components/analyt
 import { SourceTable } from '@/src/components/analytics/SourceTable'
 import { FunnelMetricsTable, type FunnelStageRow } from '@/src/components/analytics/FunnelMetricsTable'
 import { ChannelFunnelCompareTable, type ChannelFunnelGroup } from '@/src/components/analytics/ChannelFunnelCompareTable'
+import { ReportModeDialog } from '@/src/components/analytics/ReportModeDialog'
 import { ClarityCard, type ClarityCardData } from '@/src/components/analytics/ClarityCard'
 import type { AdChannel, CampaignPerformance } from '@/src/lib/ad-data'
 
@@ -160,6 +161,7 @@ export default function EventAnalyticsPage() {
   const [error, setError] = useState<string | null>(null)
   const [refreshTick, setRefreshTick] = useState(0)
   const [granularity, setGranularity] = useState<TrendGranularity>('day')
+  const [reportOpen, setReportOpen] = useState(false)
 
   useEffect(() => {
     if (!eventId) return
@@ -405,6 +407,15 @@ export default function EventAnalyticsPage() {
               >
                 <RefreshCw size={14} /> 새로고침
               </button>
+              <button
+                type="button"
+                onClick={() => setReportOpen(true)}
+                disabled={!data}
+                className="inline-flex items-center gap-1 text-sm rounded-md bg-primary text-primary-foreground px-3 py-1.5 hover:bg-primary/90 disabled:opacity-50 font-semibold"
+                title="리포트 모드 (PPT·PDF 다운로드)"
+              >
+                <FileText size={14} /> 리포트 모드
+              </button>
             </div>
           </div>
 
@@ -516,6 +527,13 @@ export default function EventAnalyticsPage() {
           </>
         )}
       </div>
+
+      {/* 리포트 모드 다이얼로그 */}
+      <ReportModeDialog
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        data={data as never}
+      />
     </div>
   )
 }
