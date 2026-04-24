@@ -229,60 +229,119 @@ export async function buildReportPptx({
     addFooter(slide, 2, totalPagesPlaceholder, periodLabel)
   }
 
-  // ═════════ 슬라이드 3 — 퍼널 흐름 ═════════
+  // ═════════ 슬라이드 3 — 퍼널 5 카드 (대시보드 FunnelFlow 스타일) ═════════
   {
     const slide = pptx.addSlide()
     addTitle(slide, '광고비 → 계약 퍼널', '단계별 수 · 전환율 · 획득당 비용')
 
+    const is3550 = data.eventId === '3550'
+    const reserveLabel = is3550 ? '예약' : '방문예약'
+    const contractLabel = is3550 ? '계약' : '결제'
+
     const stages = [
-      { label: '노출',   value: f.impressions,       cvr: null,                      cpa: null },
-      { label: '클릭',   value: f.clicks,            cvr: f.ctr / 100,               cpa: f.cpc },
-      { label: '리드',   value: f.leads,             cvr: f.cvr_session_to_lead,     cpa: f.cpa_lead },
-      { label: '예약',   value: f.visitReservations, cvr: f.cvr_lead_to_visitReservation, cpa: f.cpa_visitReservation },
-      { label: '계약',   value: f.reservations,      cvr: f.cvr_visitReservation_to_payment, cpa: f.cpa_reservation },
+      { label: '노출', value: f.impressions, prevLabel: null, cvr: null as number | null, cpu: null as number | null, cpuLabel: '', source: 'admin' },
+      { label: '클릭', value: f.clicks, prevLabel: '노출', cvr: f.ctr / 100, cpu: f.cpc, cpuLabel: 'CPC · 클릭당', source: 'admin' },
+      { label: '리드', value: f.leads, prevLabel: '클릭', cvr: f.clicks > 0 ? f.leads / f.clicks : 0, cpu: f.cpa_lead, cpuLabel: 'CPA · 리드 획득당', source: 'admin' },
+      { label: reserveLabel, value: f.visitReservations, prevLabel: '리드', cvr: f.cvr_lead_to_visitReservation, cpu: f.cpa_visitReservation, cpuLabel: `${reserveLabel}당 단가`, source: 'dummy' },
+      { label: contractLabel, value: f.reservations, prevLabel: reserveLabel, cvr: f.cvr_visitReservation_to_payment, cpu: f.cpa_reservation, cpuLabel: `${contractLabel}당 단가`, source: 'dummy' },
     ]
 
-    const topVal = stages[0].value || 1
-    const rowH = 0.85
-    const startY = 1.8
-    const maxBarW = SLIDE_W - 3.5   // 왼쪽 라벨·값 공간 빼고 오른쪽 바
+    // 5 카드 그리드 상단부
+    const cardTop = 1.7
+    const cardW = (SLIDE_W - 1 - 4 * 0.15) / 5   // 전체 너비 / 5 카드
+    const cardH = 2.4
 
     stages.forEach((s, i) => {
-      const y = startY + i * rowH
+      const x = 0.5 + i * (cardW + 0.15)
+      // 카드 배경
+      slide.addShape('roundRect', {
+        x, y: cardTop, w: cardW, h: cardH,
+        fill: { color: 'FFFFFF' },
+        line: { color: COLOR_BORDER, width: 1.5 },
+        rectRadius: 0.12,
+      })
       // 라벨
       slide.addText(s.label, {
-        x: 0.5, y, w: 1.3, h: rowH - 0.1,
-        fontFace: BRAND_FONT, fontSize: 16, bold: true, color: COLOR_TEXT_DARK,
-        valign: 'middle',
+        x: x + 0.15, y: cardTop + 0.12, w: cardW - 1.2, h: 0.3,
+        fontFace: BRAND_FONT, fontSize: 12, color: COLOR_TEXT_MUTED,
+      })
+      // 출처 배지
+      const badgeColor = s.source === 'admin' ? '047857' : 'B45309'
+      const badgeBg = s.source === 'admin' ? 'ECFDF5' : 'FFFBEB'
+      slide.addText(s.source === 'admin' ? '어드민' : '더미', {
+        x: x + cardW - 1.05, y: cardTop + 0.12, w: 0.9, h: 0.3,
+        align: 'center',
+        fontFace: BRAND_FONT, fontSize: 9, bold: true, color: badgeColor,
+        fill: { color: badgeBg },
       })
       // 값
       slide.addText(fmtNumber(s.value), {
-        x: 1.8, y, w: 1.5, h: rowH - 0.1,
-        fontFace: BRAND_FONT, fontSize: 18, bold: true, color: COLOR_BRAND,
-        valign: 'middle',
+        x: x + 0.15, y: cardTop + 0.45, w: cardW - 0.3, h: 0.9,
+        fontFace: BRAND_FONT, fontSize: 30, bold: true, color: COLOR_TEXT_DARK,
       })
-      // 바 (log-scale 대신 linear)
-      const barW = Math.max(0.3, (s.value / topVal) * maxBarW)
-      slide.addShape('roundRect', {
-        x: 3.3, y: y + 0.18, w: barW, h: rowH - 0.45,
-        fill: { color: COLOR_BRAND, transparency: 80 - (i * 15) },
-        line: { color: COLOR_BRAND, width: 0 },
-        rectRadius: 0.05,
-      })
-      // 전환율·CPA (우측)
+      // 전환율
       if (s.cvr !== null) {
-        slide.addText(`${fmtPct(s.cvr)} · ${fmtKRW(s.cpa ?? 0)}`, {
-          x: SLIDE_W - 2.8, y, w: 2.3, h: rowH - 0.1,
-          align: 'right', valign: 'middle',
-          fontFace: BRAND_FONT, fontSize: 11, color: COLOR_TEXT_MUTED,
+        const convGood = s.cvr >= 0.5
+        slide.addText([
+          { text: `${s.prevLabel} → `, options: { color: COLOR_TEXT_MUTED } },
+          { text: fmtPct(s.cvr), options: { color: convGood ? COLOR_SUCCESS : 'E11D48', bold: true } },
+        ], {
+          x: x + 0.15, y: cardTop + 1.25, w: cardW - 0.3, h: 0.3,
+          fontFace: BRAND_FONT, fontSize: 11,
         })
       } else {
         slide.addText('시작', {
-          x: SLIDE_W - 2.8, y, w: 2.3, h: rowH - 0.1,
-          align: 'right', valign: 'middle',
+          x: x + 0.15, y: cardTop + 1.25, w: cardW - 0.3, h: 0.3,
           fontFace: BRAND_FONT, fontSize: 11, color: COLOR_TEXT_MUTED,
         })
       }
+      // CPU (획득당 비용) — 하단 분리 영역
+      if (s.cpu !== null && s.cpu > 0) {
+        slide.addShape('line', {
+          x: x + 0.15, y: cardTop + 1.65, w: cardW - 0.3, h: 0,
+          line: { color: COLOR_BORDER, width: 0.5 },
+        })
+        slide.addText(s.cpuLabel, {
+          x: x + 0.15, y: cardTop + 1.7, w: cardW - 0.3, h: 0.25,
+          fontFace: BRAND_FONT, fontSize: 9, color: COLOR_TEXT_MUTED,
+        })
+        slide.addText(fmtKRW(s.cpu), {
+          x: x + 0.15, y: cardTop + 1.95, w: cardW - 0.3, h: 0.35,
+          fontFace: BRAND_FONT, fontSize: 15, bold: true, color: COLOR_TEXT_DARK,
+        })
+      }
+    })
+
+    // 하단 요약 4 카드 (광고비 / 객단가 / 매출 / ROAS)
+    const bottomY = 4.5
+    const bottomW = (SLIDE_W - 1 - 3 * 0.15) / 4
+    const bottomH = 1.2
+    const bottomCards: Array<{ label: string; value: string; bg: string; fg: string; border: string }> = [
+      { label: '광고비', value: fmtKRW(f.adSpend), bg: 'F8FAFC', fg: COLOR_TEXT_DARK, border: 'E2E8F0' },
+      { label: '객단가 (추정)', value: fmtKRW(f.averageOrderValue), bg: 'ECFDF533', fg: '047857', border: 'BBF7D0' },
+      { label: '매출 (추정)', value: fmtKRW(f.reservationRevenue), bg: 'ECFDF5', fg: '065F46', border: '86EFAC' },
+      { label: 'ROAS', value: (f.trueROAS_estimated * 100).toFixed(1) + '%',
+        bg: f.trueROAS_estimated >= 1 ? 'D1FAE5' : 'FEF3C7',
+        fg: f.trueROAS_estimated >= 1 ? '047857' : 'B45309',
+        border: f.trueROAS_estimated >= 1 ? '6EE7B7' : 'FDE68A' },
+    ]
+    bottomCards.forEach((c, i) => {
+      const x = 0.5 + i * (bottomW + 0.15)
+      slide.addShape('roundRect', {
+        x, y: bottomY, w: bottomW, h: bottomH,
+        fill: { color: c.bg.length === 8 ? c.bg.slice(0, 6) : c.bg, transparency: c.bg.length === 8 ? 70 : 0 },
+        line: { color: c.border, width: 1 },
+        rectRadius: 0.12,
+      })
+      slide.addText(c.label, {
+        x: x + 0.2, y: bottomY + 0.15, w: bottomW - 0.4, h: 0.3,
+        fontFace: BRAND_FONT, fontSize: 11, color: COLOR_TEXT_MUTED,
+      })
+      slide.addText(c.value, {
+        x: x + 0.2, y: bottomY + 0.45, w: bottomW - 0.4, h: 0.65,
+        fontFace: BRAND_FONT, fontSize: c.label === 'ROAS' ? 30 : 24,
+        bold: true, color: c.fg,
+      })
     })
 
     addFooter(slide, 3, totalPagesPlaceholder, periodLabel)

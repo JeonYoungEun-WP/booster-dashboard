@@ -159,77 +159,255 @@ function renderExecSummary(data: EventAnalyticsResponse, total: number, periodLa
 
 function renderFunnel(data: EventAnalyticsResponse, total: number, periodLabel: string): HTMLDivElement {
   const f = data.funnel
+  const is3550 = data.eventId === '3550'
+  const reserveLabel = is3550 ? '예약' : '방문예약'
+  const contractLabel = is3550 ? '계약' : '결제'
+
+  // 5단계 카드 (대시보드 FunnelFlow 와 동일 구조)
   const stages = [
-    { label: '노출', value: f.impressions, cvr: null as number | null, cpa: null as number | null },
-    { label: '클릭', value: f.clicks, cvr: f.ctr / 100, cpa: f.cpc },
-    { label: '리드', value: f.leads, cvr: f.cvr_session_to_lead, cpa: f.cpa_lead },
-    { label: '예약', value: f.visitReservations, cvr: f.cvr_lead_to_visitReservation, cpa: f.cpa_visitReservation },
-    { label: '계약', value: f.reservations, cvr: f.cvr_visitReservation_to_payment, cpa: f.cpa_reservation },
+    { label: '노출', value: f.impressions, prevLabel: null, cvr: null as number | null, cpu: null as number | null, cpuLabel: '', source: 'admin' },
+    { label: '클릭', value: f.clicks, prevLabel: '노출', cvr: f.ctr / 100, cpu: f.cpc, cpuLabel: 'CPC · 클릭당 광고비', source: 'admin' },
+    { label: '리드', value: f.leads, prevLabel: '클릭', cvr: f.leads / Math.max(1, f.clicks), cpu: f.cpa_lead, cpuLabel: 'CPA · 리드 획득당', source: 'admin' },
+    { label: reserveLabel, value: f.visitReservations, prevLabel: '리드', cvr: f.cvr_lead_to_visitReservation, cpu: f.cpa_visitReservation, cpuLabel: `${reserveLabel}당 단가`, source: 'dummy' },
+    { label: contractLabel, value: f.reservations, prevLabel: reserveLabel, cvr: f.cvr_visitReservation_to_payment, cpu: f.cpa_reservation, cpuLabel: `${contractLabel}당 단가`, source: 'dummy' },
   ]
-  const topVal = stages[0].value || 1
+
+  const badgeStyle = (src: string) => src === 'admin'
+    ? `background: #ECFDF5; color: #047857; border: 1px solid #A7F3D0;`
+    : src === 'ga'
+      ? `background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE;`
+      : `background: #FFFBEB; color: #B45309; border: 1px solid #FDE68A;`
+  const badgeLabel = (src: string) => src === 'admin' ? '어드민' : src === 'ga' ? 'GA' : '더미'
 
   const el = createBaseSlide()
   el.innerHTML = `
     ${slideHeader('광고비 → 계약 퍼널', '단계별 수 · 전환율 · 획득당 비용')}
-    <div style="padding: 20px 80px;">
-      ${stages.map((s, i) => {
-        const barW = Math.max(4, (s.value / topVal) * 100)
-        const alpha = 1 - i * 0.15
-        return `
-          <div style="display: flex; align-items: center; gap: 20px; padding: 16px 0; border-bottom: 1px solid ${COLOR_BORDER};">
-            <div style="flex: 0 0 110px; font-size: 24px; font-weight: 700;">${escapeHtml(s.label)}</div>
-            <div style="flex: 0 0 140px; font-size: 28px; font-weight: 800; color: ${COLOR_BRAND};">${fmtNumber(s.value)}</div>
-            <div style="flex: 1 1 auto; position: relative; height: 28px; background: ${COLOR_BG_LIGHT}; border-radius: 6px;">
-              <div style="position: absolute; left: 0; top: 0; height: 100%; width: ${barW}%; background: ${COLOR_BRAND}; opacity: ${alpha}; border-radius: 6px;"></div>
-            </div>
-            <div style="flex: 0 0 240px; font-size: 16px; color: ${COLOR_TEXT_MUTED}; text-align: right;">
+    <div style="padding: 10px 60px;">
+      <!-- 5 카드 -->
+      <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px;">
+        ${stages.map((s) => {
+          const convGood = s.cvr !== null && s.cvr >= 0.5
+          return `
+            <div style="border: 2px solid ${COLOR_BORDER}; border-radius: 14px; padding: 22px 18px; background: #FFFFFF;">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                <div style="font-size: 18px; color: ${COLOR_TEXT_MUTED};">${escapeHtml(s.label)}</div>
+                <span style="font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; ${badgeStyle(s.source)}">${badgeLabel(s.source)}</span>
+              </div>
+              <div style="font-size: 52px; font-weight: 800; color: ${COLOR_TEXT_DARK}; margin-top: 10px; letter-spacing: -1px; line-height: 1;">${fmtNumber(s.value)}</div>
               ${s.cvr !== null
-                ? `전환율 ${fmtPct(s.cvr)} · CPA ${fmtKRW(s.cpa ?? 0)}`
-                : '시작'}
+                ? `<div style="font-size: 15px; margin-top: 12px; color: ${convGood ? COLOR_SUCCESS : '#E11D48'};">
+                    <span style="color: ${COLOR_TEXT_MUTED};">${escapeHtml(s.prevLabel ?? '')} →</span> ${fmtPct(s.cvr)}
+                  </div>`
+                : `<div style="font-size: 15px; margin-top: 12px; color: ${COLOR_TEXT_MUTED};">시작</div>`}
+              ${s.cpu !== null && s.cpu > 0
+                ? `<div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid ${COLOR_BORDER};">
+                    <div style="font-size: 12px; color: ${COLOR_TEXT_MUTED};">${escapeHtml(s.cpuLabel)}</div>
+                    <div style="font-size: 22px; font-weight: 700; margin-top: 3px;">${fmtKRW(s.cpu)}</div>
+                  </div>`
+                : ''}
             </div>
-          </div>
-        `
-      }).join('')}
+          `
+        }).join('')}
+      </div>
+
+      <!-- 하단 요약 4카드 -->
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 28px; padding-top: 28px; border-top: 1px solid ${COLOR_BORDER};">
+        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 14px; padding: 20px 22px;">
+          <div style="font-size: 16px; color: ${COLOR_TEXT_MUTED};">광고비</div>
+          <div style="font-size: 34px; font-weight: 800; color: ${COLOR_TEXT_DARK}; margin-top: 6px; letter-spacing: -0.5px;">${fmtKRW(f.adSpend)}</div>
+        </div>
+        <div style="background: rgba(16,185,129,0.05); border: 1px solid #BBF7D0; border-radius: 14px; padding: 20px 22px;">
+          <div style="font-size: 16px; color: #047857;">객단가 (추정)</div>
+          <div style="font-size: 34px; font-weight: 800; color: #047857; margin-top: 6px; letter-spacing: -0.5px;">${fmtKRW(f.averageOrderValue)}</div>
+        </div>
+        <div style="background: #ECFDF5; border: 1px solid #86EFAC; border-radius: 14px; padding: 20px 22px;">
+          <div style="font-size: 16px; color: #047857;">매출 (추정)</div>
+          <div style="font-size: 34px; font-weight: 800; color: #065F46; margin-top: 6px; letter-spacing: -0.5px;">${fmtKRW(f.reservationRevenue)}</div>
+        </div>
+        <div style="background: ${f.trueROAS_estimated >= 1 ? 'linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)' : 'linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%)'}; border: 2px solid ${f.trueROAS_estimated >= 1 ? '#6EE7B7' : '#FDE68A'}; border-radius: 14px; padding: 20px 22px;">
+          <div style="font-size: 16px; color: ${COLOR_TEXT_MUTED};">ROAS</div>
+          <div style="font-size: 42px; font-weight: 800; color: ${f.trueROAS_estimated >= 1 ? '#047857' : '#B45309'}; margin-top: 6px; letter-spacing: -0.5px;">${(f.trueROAS_estimated * 100).toFixed(1)}%</div>
+        </div>
+      </div>
     </div>
     ${slideFooter(3, total, periodLabel)}
   `
   return el
 }
 
+/** 도넛 SVG — 채널별 리드 비중 */
+function renderDonutSvg(
+  rows: Array<{ channel: string; leads: number; color: string }>,
+  size: number,
+): string {
+  const total = rows.reduce((s, r) => s + r.leads, 0)
+  if (total === 0) return ''
+  const cx = size / 2, cy = size / 2
+  const rOuter = size / 2 - 4
+  const rInner = size * 0.3
+  let startAngle = -Math.PI / 2   // 12시 방향 시작
+  const paths = rows.map((r) => {
+    const sweep = (r.leads / total) * Math.PI * 2
+    const endAngle = startAngle + sweep
+    const x1 = cx + rOuter * Math.cos(startAngle)
+    const y1 = cy + rOuter * Math.sin(startAngle)
+    const x2 = cx + rOuter * Math.cos(endAngle)
+    const y2 = cy + rOuter * Math.sin(endAngle)
+    const x3 = cx + rInner * Math.cos(endAngle)
+    const y3 = cy + rInner * Math.sin(endAngle)
+    const x4 = cx + rInner * Math.cos(startAngle)
+    const y4 = cy + rInner * Math.sin(startAngle)
+    const largeArc = sweep > Math.PI ? 1 : 0
+    const d = `M ${x1} ${y1} A ${rOuter} ${rOuter} 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A ${rInner} ${rInner} 0 ${largeArc} 0 ${x4} ${y4} Z`
+    startAngle = endAngle
+    return `<path d="${d}" fill="${r.color}" stroke="#FFFFFF" stroke-width="2" />`
+  }).join('')
+  return `
+    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+      ${paths}
+      <text x="${cx}" y="${cy - 10}" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="12" fill="${COLOR_TEXT_MUTED}">총 리드</text>
+      <text x="${cx}" y="${cy + 14}" text-anchor="middle" font-family="Pretendard, sans-serif" font-size="24" font-weight="800" fill="${COLOR_TEXT_DARK}">${fmtNumber(total)}</text>
+    </svg>
+  `
+}
+
+const CHANNEL_COLOR_HEX: Record<string, string> = {
+  meta: '#1877F2',
+  tiktok: '#000000',
+  google: '#4285F4',
+  naver: '#03C75A',
+  kakao: '#FEE500',
+  karrot: '#FF7E1D',
+}
+
 function renderChannelTable(data: EventAnalyticsResponse, total: number, periodLabel: string): HTMLDivElement {
   const channels = [...data.byChannel].sort((a, b) => b.leads - a.leads)
+  const donutRows = channels.map((c) => ({
+    channel: c.channel,
+    leads: c.leads,
+    color: CHANNEL_COLOR_HEX[c.channel] ?? COLOR_BRAND,
+  }))
+  const totalLeads = channels.reduce((s, c) => s + c.leads, 0)
+  const maxSpend = Math.max(1, ...channels.map((c) => c.adSpend))
+
+  const is3550 = data.eventId === '3550'
+  const reserveLabel = is3550 ? '예약' : '방문예약'
+  const contractLabel = is3550 ? '계약' : '결제'
+
+  // 요약 합계
+  const sumAdSpend = channels.reduce((s, c) => s + c.adSpend, 0)
+  const sumRevenue = channels.reduce((s, c) => s + c.revenue, 0)
+  const totalROAS = sumAdSpend > 0 ? sumRevenue / sumAdSpend : 0
+
   const el = createBaseSlide()
   el.innerHTML = `
     ${slideHeader('채널별 성과', `${channels.length}개 채널 · 리드 내림차순`)}
-    <div style="padding: 20px 80px;">
-      <table style="width: 100%; border-collapse: collapse; font-size: 18px;">
-        <thead>
-          <tr style="background: ${COLOR_BG_LIGHT};">
-            <th style="padding: 16px; text-align: left; border-bottom: 2px solid ${COLOR_BORDER};">채널</th>
-            <th style="padding: 16px; text-align: right; border-bottom: 2px solid ${COLOR_BORDER};">광고비</th>
-            <th style="padding: 16px; text-align: right; border-bottom: 2px solid ${COLOR_BORDER};">클릭</th>
-            <th style="padding: 16px; text-align: right; border-bottom: 2px solid ${COLOR_BORDER};">리드</th>
-            <th style="padding: 16px; text-align: right; border-bottom: 2px solid ${COLOR_BORDER};">예약</th>
-            <th style="padding: 16px; text-align: right; border-bottom: 2px solid ${COLOR_BORDER};">계약</th>
-            <th style="padding: 16px; text-align: right; border-bottom: 2px solid ${COLOR_BORDER};">CPA</th>
-            <th style="padding: 16px; text-align: right; border-bottom: 2px solid ${COLOR_BORDER};">ROAS</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${channels.map((c) => `
+    <div style="padding: 10px 60px; display: grid; grid-template-columns: 380px 1fr; gap: 20px;">
+      <!-- 좌측: 채널 비중 (도넛 + 광고비 바) -->
+      <div style="border: 1px solid ${COLOR_BORDER}; border-radius: 14px; padding: 20px;">
+        <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px;">
+          <div style="font-size: 18px; font-weight: 700;">채널 비중</div>
+          <div style="font-size: 13px; color: ${COLOR_TEXT_MUTED};">리드 기준</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div style="flex: 0 0 170px;">
+            ${renderDonutSvg(donutRows, 170)}
+          </div>
+          <ul style="flex: 1; margin: 0; padding: 0; list-style: none;">
+            ${donutRows.map((d) => {
+              const share = totalLeads > 0 ? (d.leads / totalLeads) * 100 : 0
+              return `
+                <li style="display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 14px;">
+                  <span style="width: 12px; height: 12px; border-radius: 50%; background: ${d.color}; display: inline-block;"></span>
+                  <span style="font-weight: 600; flex: 1;">${escapeHtml(CHANNEL_KO[d.channel] ?? d.channel)}</span>
+                  <span style="color: ${COLOR_TEXT_MUTED}; font-size: 12px;">${share.toFixed(1)}%</span>
+                </li>
+              `
+            }).join('')}
+          </ul>
+        </div>
+        <div style="border-top: 1px solid ${COLOR_BORDER}; margin-top: 16px; padding-top: 16px;">
+          <div style="font-size: 14px; font-weight: 700; margin-bottom: 10px;">광고비 <span style="color: ${COLOR_TEXT_MUTED}; font-weight: 400; font-size: 12px; float: right;">채널별 지출</span></div>
+          ${channels.map((c, i) => {
+            const pct = Math.max(2, (c.adSpend / maxSpend) * 100)
+            return `
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                <span style="flex: 0 0 70px; font-size: 12px; font-weight: 600;">${escapeHtml(CHANNEL_KO[c.channel] ?? c.channel)}</span>
+                <div style="flex: 1; height: 14px; background: #F1F5F9; border-radius: 4px; overflow: hidden;">
+                  <div style="width: ${pct}%; height: 100%; background: ${donutRows[i].color}; border-radius: 4px;"></div>
+                </div>
+                <span style="flex: 0 0 auto; font-size: 12px; font-weight: 700;">${fmtKRW(c.adSpend)}</span>
+              </div>
+            `
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- 우측: 채널별 퍼널 비교 테이블 (단계 컬럼 공유) -->
+      <div style="border: 1px solid ${COLOR_BORDER}; border-radius: 14px; padding: 20px; overflow: hidden;">
+        <div style="font-size: 18px; font-weight: 700; margin-bottom: 14px;">채널별 퍼널</div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+          <thead>
             <tr>
-              <td style="padding: 14px 16px; border-bottom: 1px solid ${COLOR_BORDER}; font-weight: 600;">${escapeHtml(CHANNEL_KO[c.channel] ?? c.channel)}</td>
-              <td style="padding: 14px 16px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right;">${fmtKRW(c.adSpend)}</td>
-              <td style="padding: 14px 16px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right;">${fmtNumber(c.clicks)}</td>
-              <td style="padding: 14px 16px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right;">${fmtNumber(c.leads)}</td>
-              <td style="padding: 14px 16px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right;">${fmtNumber(c.reservations)}</td>
-              <td style="padding: 14px 16px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right;">${fmtNumber(c.contracts)}</td>
-              <td style="padding: 14px 16px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right;">${c.cpa_lead > 0 ? fmtKRW(c.cpa_lead) : '—'}</td>
-              <td style="padding: 14px 16px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right; font-weight: 700; color: ${c.roas >= 1 ? COLOR_SUCCESS : COLOR_WARN};">${fmtPct(c.roas)}</td>
+              <th rowspan="2" style="padding: 6px 8px; text-align: left; color: ${COLOR_TEXT_MUTED}; border-bottom: 2px solid ${COLOR_BORDER}; vertical-align: bottom; width: 90px; font-size: 11px;">단계</th>
+              ${channels.map((c) => `
+                <th colspan="2" style="padding: 6px 8px; text-align: center; border-bottom: 1px solid ${COLOR_BORDER}; border-left: 1px solid ${COLOR_BORDER}; font-size: 13px; font-weight: 700;">
+                  <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${CHANNEL_COLOR_HEX[c.channel] ?? COLOR_BRAND}; margin-right: 6px; vertical-align: middle;"></span>${escapeHtml(CHANNEL_KO[c.channel] ?? c.channel)}
+                </th>
+              `).join('')}
             </tr>
-          `).join('')}
-        </tbody>
-      </table>
+            <tr style="font-size: 10px; color: ${COLOR_TEXT_MUTED};">
+              ${channels.map(() => `
+                <th style="padding: 4px 6px; text-align: right; border-bottom: 2px solid ${COLOR_BORDER}; border-left: 1px solid ${COLOR_BORDER};">수</th>
+                <th style="padding: 4px 6px; text-align: right; border-bottom: 2px solid ${COLOR_BORDER};">전환 / 단가</th>
+              `).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${[
+              { label: '노출', getValue: (c: typeof channels[0]) => ({ v: c.impressions, cvr: null, cpa: null }) },
+              { label: '클릭', getValue: (c: typeof channels[0]) => ({ v: c.clicks, cvr: c.impressions > 0 ? c.clicks / c.impressions : 0, cpa: c.clicks > 0 ? c.adSpend / c.clicks : 0 }) },
+              { label: '리드', getValue: (c: typeof channels[0]) => ({ v: c.leads, cvr: c.clicks > 0 ? c.leads / c.clicks : 0, cpa: c.cpa_lead }) },
+              { label: reserveLabel, getValue: (c: typeof channels[0]) => ({ v: c.reservations, cvr: c.leads > 0 ? c.reservations / c.leads : 0, cpa: c.cpa_reservation }) },
+              { label: contractLabel, getValue: (c: typeof channels[0]) => ({ v: c.contracts, cvr: c.reservations > 0 ? c.contracts / c.reservations : 0, cpa: c.cpa_contract }) },
+            ].map((row) => `
+              <tr>
+                <td style="padding: 10px 8px; border-bottom: 1px solid ${COLOR_BORDER}; font-weight: 600;">${escapeHtml(row.label)}</td>
+                ${channels.map((c) => {
+                  const { v, cvr, cpa } = row.getValue(c)
+                  return `
+                    <td style="padding: 10px 6px; text-align: right; border-bottom: 1px solid ${COLOR_BORDER}; border-left: 1px solid ${COLOR_BORDER}; font-weight: 700; font-size: 14px;">${fmtNumber(v)}</td>
+                    <td style="padding: 10px 6px; text-align: right; border-bottom: 1px solid ${COLOR_BORDER}; font-size: 11px;">
+                      ${cvr !== null
+                        ? `<div style="font-weight: 600;">${fmtPct(cvr)}</div><div style="color: ${COLOR_TEXT_MUTED}; font-size: 10px;">${cpa && cpa > 0 ? fmtKRW(cpa) : '—'}</div>`
+                        : `<span style="color: ${COLOR_TEXT_MUTED};">—</span>`}
+                    </td>
+                  `
+                }).join('')}
+              </tr>
+            `).join('')}
+          </tbody>
+          <tfoot style="border-top: 2px solid ${COLOR_BORDER};">
+            <tr>
+              <td style="padding: 10px 8px; font-weight: 700; font-size: 13px; color: ${COLOR_TEXT_MUTED};">광고비</td>
+              ${channels.map((c) => `<td colspan="2" style="padding: 10px 8px; text-align: right; border-left: 1px solid ${COLOR_BORDER}; font-weight: 700;">${fmtKRW(c.adSpend)}</td>`).join('')}
+            </tr>
+            <tr>
+              <td style="padding: 10px 8px; font-weight: 700; font-size: 13px; color: ${COLOR_TEXT_MUTED};">매출</td>
+              ${channels.map((c) => `<td colspan="2" style="padding: 10px 8px; text-align: right; border-left: 1px solid ${COLOR_BORDER}; font-weight: 700;">${fmtKRW(c.revenue)}</td>`).join('')}
+            </tr>
+            <tr>
+              <td style="padding: 10px 8px; font-weight: 700; font-size: 13px; color: ${COLOR_TEXT_MUTED};">ROAS</td>
+              ${channels.map((c) => `<td colspan="2" style="padding: 10px 8px; text-align: right; border-left: 1px solid ${COLOR_BORDER}; font-weight: 800; color: ${c.roas >= 1 ? COLOR_SUCCESS : COLOR_WARN};">${fmtPct(c.roas)}</td>`).join('')}
+            </tr>
+          </tfoot>
+        </table>
+        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid ${COLOR_BORDER}; display: flex; justify-content: space-between; font-size: 13px;">
+          <div>합계 광고비 <strong>${fmtKRW(sumAdSpend)}</strong></div>
+          <div>합계 매출 <strong>${fmtKRW(sumRevenue)}</strong></div>
+          <div>전체 ROAS <strong style="color: ${totalROAS >= 1 ? COLOR_SUCCESS : COLOR_WARN};">${fmtPct(totalROAS)}</strong></div>
+        </div>
+      </div>
     </div>
     ${slideFooter(4, total, periodLabel)}
   `
@@ -238,34 +416,57 @@ function renderChannelTable(data: EventAnalyticsResponse, total: number, periodL
 
 function renderTrackingCodeTable(data: EventAnalyticsResponse, total: number, periodLabel: string): HTMLDivElement {
   const codes = data.byTrackingCode.slice(0, 10)
+
+  // 합계 행 (전체 byTrackingCode 기준, 상위 10 이상도 포함해서 대시보드와 동일)
+  const allCodes = data.byTrackingCode
+  const sumAdSpend = allCodes.reduce((s, c) => s + c.adSpend, 0)
+  const sumImpressions = allCodes.reduce((s, c) => s + c.impressions, 0)
+  const sumClicks = allCodes.reduce((s, c) => s + c.clicks, 0)
+  const sumLeads = allCodes.reduce((s, c) => s + c.leads, 0)
+  const sumReservations = allCodes.reduce((s, c) => s + c.reservations, 0)
+  const totalCpaLead = sumLeads > 0 ? sumAdSpend / sumLeads : 0
+  const totalRoasNum = allCodes.reduce((s, c) => s + c.reservationROAS * c.adSpend, 0)
+  const totalROAS = sumAdSpend > 0 ? totalRoasNum / sumAdSpend : 0
+
   const el = createBaseSlide()
   el.innerHTML = `
-    ${slideHeader('광고세트별 성과', `트래킹코드 상위 ${codes.length}개 · 광고비 내림차순`)}
-    <div style="padding: 20px 80px;">
-      <table style="width: 100%; border-collapse: collapse; font-size: 16px;">
+    ${slideHeader('광고세트별 성과', `트래킹코드 상위 ${codes.length}개 · 합계 기준 전체 ${allCodes.length}개 · 광고비 내림차순`)}
+    <div style="padding: 20px 60px;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 15px;">
         <thead>
           <tr style="background: ${COLOR_BG_LIGHT};">
-            <th style="padding: 14px; text-align: left; border-bottom: 2px solid ${COLOR_BORDER};">트래킹코드</th>
-            <th style="padding: 14px; text-align: right; border-bottom: 2px solid ${COLOR_BORDER};">광고비</th>
-            <th style="padding: 14px; text-align: right; border-bottom: 2px solid ${COLOR_BORDER};">노출</th>
-            <th style="padding: 14px; text-align: right; border-bottom: 2px solid ${COLOR_BORDER};">클릭</th>
-            <th style="padding: 14px; text-align: right; border-bottom: 2px solid ${COLOR_BORDER};">리드</th>
-            <th style="padding: 14px; text-align: right; border-bottom: 2px solid ${COLOR_BORDER};">예약</th>
-            <th style="padding: 14px; text-align: right; border-bottom: 2px solid ${COLOR_BORDER};">CPA</th>
-            <th style="padding: 14px; text-align: right; border-bottom: 2px solid ${COLOR_BORDER};">ROAS</th>
+            <th style="padding: 14px; text-align: left; border-bottom: 2px solid ${COLOR_BORDER}; font-size: 13px; color: ${COLOR_TEXT_MUTED};">트래킹코드</th>
+            <th style="padding: 14px; text-align: right; border-bottom: 2px solid ${COLOR_BORDER}; font-size: 13px; color: ${COLOR_TEXT_MUTED};">광고비</th>
+            <th style="padding: 14px; text-align: right; border-bottom: 2px solid ${COLOR_BORDER}; font-size: 13px; color: ${COLOR_TEXT_MUTED};">노출</th>
+            <th style="padding: 14px; text-align: right; border-bottom: 2px solid ${COLOR_BORDER}; font-size: 13px; color: ${COLOR_TEXT_MUTED};">클릭</th>
+            <th style="padding: 14px; text-align: right; border-bottom: 2px solid ${COLOR_BORDER}; font-size: 13px; color: ${COLOR_TEXT_MUTED};">리드</th>
+            <th style="padding: 14px; text-align: right; border-bottom: 2px solid ${COLOR_BORDER}; font-size: 13px; color: ${COLOR_TEXT_MUTED};">예약</th>
+            <th style="padding: 14px; text-align: right; border-bottom: 2px solid ${COLOR_BORDER}; font-size: 13px; color: ${COLOR_TEXT_MUTED};">CPA</th>
+            <th style="padding: 14px; text-align: right; border-bottom: 2px solid ${COLOR_BORDER}; font-size: 13px; color: ${COLOR_TEXT_MUTED};">ROAS</th>
           </tr>
         </thead>
         <tbody>
+          <!-- 합계 행 (상단 강조) -->
+          <tr style="background: ${COLOR_BG_LIGHT}; font-weight: 700;">
+            <td style="padding: 12px 14px; border-bottom: 2px solid ${COLOR_BORDER};">합계</td>
+            <td style="padding: 12px 14px; border-bottom: 2px solid ${COLOR_BORDER}; text-align: right;">${fmtKRW(sumAdSpend)}</td>
+            <td style="padding: 12px 14px; border-bottom: 2px solid ${COLOR_BORDER}; text-align: right;">${fmtNumber(sumImpressions)}</td>
+            <td style="padding: 12px 14px; border-bottom: 2px solid ${COLOR_BORDER}; text-align: right;">${fmtNumber(sumClicks)}</td>
+            <td style="padding: 12px 14px; border-bottom: 2px solid ${COLOR_BORDER}; text-align: right;">${fmtNumber(sumLeads)}</td>
+            <td style="padding: 12px 14px; border-bottom: 2px solid ${COLOR_BORDER}; text-align: right;">${fmtNumber(sumReservations)}</td>
+            <td style="padding: 12px 14px; border-bottom: 2px solid ${COLOR_BORDER}; text-align: right;">${totalCpaLead > 0 ? fmtKRW(totalCpaLead) : '—'}</td>
+            <td style="padding: 12px 14px; border-bottom: 2px solid ${COLOR_BORDER}; text-align: right; color: ${totalROAS >= 1 ? COLOR_SUCCESS : COLOR_WARN};">${fmtPct(totalROAS)}</td>
+          </tr>
           ${codes.map((c) => `
             <tr>
-              <td style="padding: 12px 14px; border-bottom: 1px solid ${COLOR_BORDER}; font-family: Consolas, monospace; font-size: 14px;">${escapeHtml(c.trackingCode)}</td>
-              <td style="padding: 12px 14px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right;">${fmtKRW(c.adSpend)}</td>
-              <td style="padding: 12px 14px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right;">${fmtNumber(c.impressions)}</td>
-              <td style="padding: 12px 14px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right;">${fmtNumber(c.clicks)}</td>
-              <td style="padding: 12px 14px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right;">${fmtNumber(c.leads)}</td>
-              <td style="padding: 12px 14px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right;">${fmtNumber(c.reservations)}</td>
-              <td style="padding: 12px 14px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right;">${c.cpa_lead > 0 ? fmtKRW(c.cpa_lead) : '—'}</td>
-              <td style="padding: 12px 14px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right; font-weight: 700; color: ${c.reservationROAS >= 1 ? COLOR_SUCCESS : COLOR_WARN};">${fmtPct(c.reservationROAS)}</td>
+              <td style="padding: 11px 14px; border-bottom: 1px solid ${COLOR_BORDER}; font-family: Consolas, monospace; font-size: 13px;">${escapeHtml(c.trackingCode)}</td>
+              <td style="padding: 11px 14px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right;">${fmtKRW(c.adSpend)}</td>
+              <td style="padding: 11px 14px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right;">${fmtNumber(c.impressions)}</td>
+              <td style="padding: 11px 14px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right;">${fmtNumber(c.clicks)}</td>
+              <td style="padding: 11px 14px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right;">${fmtNumber(c.leads)}</td>
+              <td style="padding: 11px 14px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right;">${fmtNumber(c.reservations)}</td>
+              <td style="padding: 11px 14px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right;">${c.cpa_lead > 0 ? fmtKRW(c.cpa_lead) : '—'}</td>
+              <td style="padding: 11px 14px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right; font-weight: 700; color: ${c.reservationROAS >= 1 ? COLOR_SUCCESS : COLOR_WARN};">${fmtPct(c.reservationROAS)}</td>
             </tr>
           `).join('')}
         </tbody>
