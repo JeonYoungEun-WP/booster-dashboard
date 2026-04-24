@@ -14,6 +14,7 @@ import { ChannelDonut, type ChannelDonutRow } from '@/src/components/analytics/C
 import { TrackingCodeTable, type TrackingCodeRow } from '@/src/components/analytics/TrackingCodeTable'
 import { SourceTable } from '@/src/components/analytics/SourceTable'
 import { FunnelMetricsTable, type FunnelStageRow } from '@/src/components/analytics/FunnelMetricsTable'
+import { ChannelFunnelCompareTable, type ChannelFunnelGroup } from '@/src/components/analytics/ChannelFunnelCompareTable'
 import { ClarityCard, type ClarityCardData } from '@/src/components/analytics/ClarityCard'
 import type { AdChannel, CampaignPerformance } from '@/src/lib/ad-data'
 
@@ -469,25 +470,19 @@ export default function EventAnalyticsPage() {
               actions={<TrendGranularityToggle value={granularity} onChange={setGranularity} />}
             />
 
-            {/* 채널 비중 (좌) + 채널별 퍼널 (우) — 한 행 */}
+            {/* 채널 비중 (좌) + 채널별 퍼널 비교 (우) — 한 행 */}
             {channelFunnelTables.length > 0 ? (
               <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-5">
                 <ChannelDonut rows={channelDonutRows} />
-                <div className={`grid grid-cols-1 gap-5 ${
-                  channelFunnelTables.length >= 2 ? 'xl:grid-cols-2' : ''
-                }`}>
-                  {channelFunnelTables.map((t) => (
-                    <FunnelMetricsTable
-                      key={t.channel}
-                      channel={t.channel as AdChannel}
-                      title="채널별 퍼널"
-                      rows={t.rows}
-                      adSpend={t.adSpend}
-                      revenue={t.revenue}
-                      roas={t.roas}
-                    />
-                  ))}
-                </div>
+                <ChannelFunnelCompareTable
+                  groups={channelFunnelTables.map((t) => ({
+                    channel: t.channel as AdChannel,
+                    rows: t.rows,
+                    adSpend: t.adSpend,
+                    revenue: t.revenue,
+                    roas: t.roas,
+                  })) as ChannelFunnelGroup[]}
+                />
               </div>
             ) : (
               <FunnelMetricsTable
