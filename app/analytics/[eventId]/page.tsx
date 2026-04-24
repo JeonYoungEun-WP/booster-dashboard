@@ -6,7 +6,6 @@ import { RefreshCw } from 'lucide-react'
 import { DateRangePicker } from '@/src/components/ui/DateRangePicker'
 import { FunnelFlow } from '@/src/components/analytics/FunnelFlow'
 import { KpiGrid } from '@/src/components/analytics/KpiGrid'
-import { KpiCardGrid, type KpiCardItem } from '@/src/components/analytics/KpiCardGrid'
 import { TrendChart, type TrendPoint } from '@/src/components/analytics/TrendChart'
 import {
   TrendGranularityToggle, aggregateTrend, type TrendGranularity,
@@ -222,10 +221,9 @@ export default function EventAnalyticsPage() {
     if (!data) return []
     const f = data.funnel
     const avgDuration = data.ga4.totals?.averageSessionDuration ?? 0
-    // 퍼널 카드에 이미 표시되는 지표(리드·방문예약·결제·광고비·ROAS) 는 중복 제거
+    // 퍼널·세션 중복 제거 — GA 전용 보조 지표만 남김
     return [
       { label: '페이지뷰', value: fmtNumber(f.pageViews), source: 'ga' as const },
-      { label: '세션', value: fmtNumber(f.sessions), source: 'ga' as const },
       { label: '평균 체류', value: fmtDuration(avgDuration), source: 'ga' as const },
     ]
   }, [data])
@@ -234,12 +232,12 @@ export default function EventAnalyticsPage() {
     if (!data) return []
     const f = data.funnel
     // 이벤트별 용어 커스터마이즈 — 3550(굿리치)는 "예약/계약" 체계
+    // 세션은 클릭 수와 거의 동일(랜딩 직후 측정)이라 퍼널에서 제외 → 노출→클릭→리드→예약→계약 5단계
     const is3550 = eventId === '3550'
     return [
       { label: '노출',     value: f.impressions,      source: 'admin' as const },
       { label: '클릭',     value: f.clicks,           source: 'admin' as const,
         cpu: f.cpc,                 cpuLabel: 'CPC · 클릭당 광고비' },
-      { label: '세션',     value: f.sessions,         source: 'ga' as const },
       { label: '리드',     value: f.leads,            source: 'admin' as const,
         cpu: f.cpa_lead,            cpuLabel: 'CPA · 리드 획득당 비용' },
       { label: is3550 ? '예약' : '방문예약', value: f.visitReservations,
@@ -269,55 +267,6 @@ export default function EventAnalyticsPage() {
     }
     return out
   }, [data])
-
-  // 전기 대비 증감률 KPI 카드 (상단 6열)
-  const kpiCardItems = useMemo<KpiCardItem[]>(() => {
-    if (!data) return []
-    const f = data.funnel
-    const p = prevData?.funnel
-    const ratio = (num: number, den: number) => (den > 0 ? num / den : 0)
-    const ctr = ratio(f.clicks, f.impressions)
-    const sessPerClick = ratio(f.sessions, f.clicks)
-    const leadPerSession = ratio(f.leads, f.sessions)
-    const reservePerLead = ratio(f.visitReservations, f.leads)
-    const is3550 = eventId === '3550'
-    const reserveLabel = is3550 ? '예약' : '방문예약'
-    return [
-      {
-        label: '노출', value: f.impressions, prevValue: p?.impressions ?? null,
-        format: 'number', source: 'admin',
-      },
-      {
-        label: '클릭', value: f.clicks, prevValue: p?.clicks ?? null,
-        format: 'number', source: 'admin',
-        conversion: `노출 → ${(ctr * 100).toFixed(2)}%`,
-        unitPrice: `CPC ₩${Math.round(f.cpc).toLocaleString('ko-KR')}`,
-      },
-      {
-        label: '세션', value: f.sessions, prevValue: p?.sessions ?? null,
-        format: 'number', source: 'ga',
-        conversion: `클릭 → ${(sessPerClick * 100).toFixed(2)}%`,
-      },
-      {
-        label: '리드', value: f.leads, prevValue: p?.leads ?? null,
-        format: 'number', source: 'admin', highlight: 'lead',
-        conversion: `세션 → ${(leadPerSession * 100).toFixed(2)}%`,
-        unitPrice: `CPA ₩${Math.round(f.cpa_lead).toLocaleString('ko-KR')}`,
-      },
-      {
-        label: reserveLabel, value: f.visitReservations, prevValue: p?.visitReservations ?? null,
-        format: 'number', source: 'dummy',
-        conversion: `리드 → ${(reservePerLead * 100).toFixed(2)}%`,
-        unitPrice: `₩${Math.round(f.cpa_visitReservation).toLocaleString('ko-KR')}`,
-      },
-      {
-        label: 'ROAS', value: f.trueROAS_estimated, prevValue: p?.trueROAS_estimated ?? null,
-        format: 'percent', source: 'admin', highlight: 'roas',
-        deltaAsPoints: true,
-        unitPrice: `매출 ₩${Math.round(f.reservationRevenue).toLocaleString('ko-KR')}`,
-      },
-    ]
-  }, [data, prevData, eventId])
 
   // 채널 도넛 rows — byChannel + sessionsByChannel 합성
   const channelDonutRows = useMemo<ChannelDonutRow[]>(() => {
@@ -350,12 +299,8 @@ export default function EventAnalyticsPage() {
         costPerAction: f.cpc, costLabel: 'CPC · 클릭당 광고비',
       },
       {
-        label: '세션', value: f.sessions, source: 'ga',
-        prevLabel: '클릭', conversionRate: safeRate(f.sessions, f.clicks),
-      },
-      {
         label: '리드', value: f.leads, source: 'admin',
-        prevLabel: '세션', conversionRate: safeRate(f.leads, f.sessions),
+        prevLabel: '클릭', conversionRate: safeRate(f.leads, f.clicks),
         costPerAction: f.cpa_lead, costLabel: 'CPA · 리드 획득당 비용',
       },
       {
@@ -381,7 +326,6 @@ export default function EventAnalyticsPage() {
     const contractLabel = is3550 ? '계약' : '결제'
     const safeRate = (num: number, den: number) => (den > 0 ? num / den : 0)
     return (data.byChannel ?? []).map((c) => {
-      const sessions = sessionsByChannel[c.channel] ?? 0
       const cpc = c.clicks > 0 ? c.adSpend / c.clicks : 0
       const rows: FunnelStageRow[] = [
         { label: '노출', value: c.impressions, source: 'admin' },
@@ -391,12 +335,8 @@ export default function EventAnalyticsPage() {
           costPerAction: cpc, costLabel: 'CPC · 클릭당 광고비',
         },
         {
-          label: '세션', value: sessions, source: 'ga',
-          prevLabel: '클릭', conversionRate: safeRate(sessions, c.clicks),
-        },
-        {
           label: '리드', value: c.leads, source: 'admin',
-          prevLabel: '세션', conversionRate: safeRate(c.leads, sessions),
+          prevLabel: '클릭', conversionRate: safeRate(c.leads, c.clicks),
           costPerAction: c.cpa_lead, costLabel: 'CPA · 리드 획득당 비용',
         },
         {
@@ -428,17 +368,17 @@ export default function EventAnalyticsPage() {
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 space-y-3">
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div>
-              <h1 className="text-xl font-bold">랜딩페이지 퍼널 — 이벤트 {eventId}</h1>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <h1 className="text-2xl font-bold">랜딩페이지 퍼널 — 이벤트 {eventId}</h1>
+              <p className="text-sm text-muted-foreground mt-1">
                 {data?.landingPaths?.map((p) => (
-                  <span key={p} className="inline-block mr-2 bg-muted px-1.5 py-0.5 rounded text-[10px] font-mono">
+                  <span key={p} className="inline-block mr-2 bg-muted px-2 py-0.5 rounded text-xs font-mono">
                     heypick.co.kr{p}
                   </span>
                 ))}
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <label className="text-xs inline-flex items-center gap-1.5 text-muted-foreground cursor-pointer">
+              <label className="text-sm inline-flex items-center gap-1.5 text-muted-foreground cursor-pointer">
                 <input
                   type="checkbox"
                   checked={excludeTest}
@@ -450,10 +390,10 @@ export default function EventAnalyticsPage() {
               <button
                 type="button"
                 onClick={() => setRefreshTick((t) => t + 1)}
-                className="inline-flex items-center gap-1 text-xs rounded-md border border-border px-2 py-1.5 hover:bg-muted"
+                className="inline-flex items-center gap-1 text-sm rounded-md border border-border px-2.5 py-1.5 hover:bg-muted"
                 title="새로고침"
               >
-                <RefreshCw size={13} /> 새로고침
+                <RefreshCw size={14} /> 새로고침
               </button>
             </div>
           </div>
@@ -465,7 +405,7 @@ export default function EventAnalyticsPage() {
               onChange={(s, e) => { setStartDate(s); setEndDate(e) }}
             />
             <div className="ml-auto flex gap-1">
-              <button className="text-xs px-2.5 py-1 rounded-md bg-primary/10 text-primary font-medium">
+              <button className="text-sm px-3 py-1.5 rounded-md bg-primary/10 text-primary font-medium">
                 {DEFAULT_VIEW}
               </button>
               {DISABLED_VIEWS.map((v) => (
@@ -473,7 +413,7 @@ export default function EventAnalyticsPage() {
                   key={v}
                   disabled
                   title="Phase 2 예정"
-                  className="text-xs px-2.5 py-1 rounded-md text-muted-foreground/50 cursor-not-allowed"
+                  className="text-sm px-3 py-1.5 rounded-md text-muted-foreground/50 cursor-not-allowed"
                 >
                   {v}
                 </button>
@@ -481,15 +421,15 @@ export default function EventAnalyticsPage() {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {data?.realDataNote && (
-              <div className="text-[11px] text-blue-700 bg-blue-50 border border-blue-200 rounded-md px-2.5 py-1.5 inline-block">
+              <div className="text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-md px-3 py-1.5 inline-block">
                 📊 광고 실데이터: {data.realDataNote.advertiser} · {data.realDataNote.period.startDate} ~ {data.realDataNote.period.endDate}
                 <span className="text-blue-500/70 ml-1">(매체 자동 연동 전까지 하드코딩)</span>
               </div>
             )}
             {data?.leads.simulated && (
-              <div className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2.5 py-1.5 inline-block">
+              <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-1.5 inline-block">
                 🧪 리드·예약 더미 — 실 DB 연동 대기 (Phase 2)
               </div>
             )}
@@ -499,19 +439,16 @@ export default function EventAnalyticsPage() {
 
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-5 space-y-5">
         {loading && !data && (
-          <div className="text-center text-muted-foreground py-20">데이터를 불러오는 중...</div>
+          <div className="text-center text-base text-muted-foreground py-20">데이터를 불러오는 중...</div>
         )}
         {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-base text-red-700">
             오류: {error}
           </div>
         )}
 
         {data && (
           <>
-            {/* 상단: 6열 KPI 그리드 (전기 대비 증감률) */}
-            <KpiCardGrid items={kpiCardItems} />
-
             <FunnelFlow
               stages={funnelStages}
               trueROAS={data.funnel.trueROAS_estimated}

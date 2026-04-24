@@ -69,26 +69,26 @@ export function FunnelMetricsTable({
   channel,
 }: Props) {
   return (
-    <section className="rounded-xl border border-border bg-card p-4">
-      <div className="flex items-baseline justify-between mb-3 gap-2">
+    <section className="rounded-xl border border-border bg-card p-5">
+      <div className="flex items-baseline justify-between mb-4 gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          {channel && <ChannelIcon channel={channel} size={18} />}
-          <h2 className="text-sm font-semibold truncate">
+          {channel && <ChannelIcon channel={channel} size={22} />}
+          <h2 className="text-base font-semibold truncate">
             {title}
             {channel && <span className="ml-1.5 text-muted-foreground font-normal">· {CHANNEL_LABEL[channel]}</span>}
           </h2>
         </div>
-        <span className="text-xs text-muted-foreground shrink-0">{subtitle}</span>
+        <span className="text-sm text-muted-foreground shrink-0">{subtitle}</span>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-base">
           <thead>
-            <tr className="border-b border-border text-left text-muted-foreground">
-              <th className="py-2 pr-3 font-medium">단계</th>
-              <th className="py-2 px-3 font-medium text-right">수</th>
-              <th className="py-2 px-3 font-medium text-right">전환율</th>
-              <th className="py-2 pl-3 font-medium text-right">전환 단가</th>
+            <tr className="border-b border-border text-left text-muted-foreground text-sm">
+              <th className="py-3 pr-3 font-medium">단계</th>
+              <th className="py-3 px-3 font-medium text-right">수</th>
+              <th className="py-3 px-3 font-medium text-right">전환율</th>
+              <th className="py-3 pl-3 font-medium text-right">전환 단가</th>
             </tr>
           </thead>
           <tbody>
@@ -101,40 +101,40 @@ export function FunnelMetricsTable({
                   key={`${r.label}-${i}`}
                   className={`border-b border-border/50 ${grouped ? 'bg-primary/[0.03]' : ''}`}
                 >
-                  <td className="py-3 pr-3">
-                    <div className="inline-flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-md bg-muted flex items-center justify-center shrink-0">
-                        <Icon size={14} strokeWidth={1.8} />
+                  <td className="py-3.5 pr-3">
+                    <div className="inline-flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-md bg-muted flex items-center justify-center shrink-0">
+                        <Icon size={18} strokeWidth={1.8} />
                       </div>
                       <div>
-                        <div className="text-sm font-medium">{r.label}</div>
-                        <span className={`inline-block mt-0.5 text-[10px] px-1 py-px rounded border ${sb.cls}`}>
+                        <div className="text-base font-medium">{r.label}</div>
+                        <span className={`inline-block mt-0.5 text-xs font-medium px-1.5 py-0.5 rounded border ${sb.cls}`}>
                           {sb.label}
                         </span>
                       </div>
                     </div>
                   </td>
-                  <td className="py-3 px-3 text-right tabular-nums">
-                    <span className="text-base font-semibold">{fmtNumber(r.value)}</span>
+                  <td className="py-3.5 px-3 text-right tabular-nums">
+                    <span className="text-xl font-semibold">{fmtNumber(r.value)}</span>
                   </td>
-                  <td className="py-3 px-3 text-right tabular-nums">
+                  <td className="py-3.5 px-3 text-right tabular-nums">
                     {r.conversionRate !== undefined ? (
                       <div>
-                        <div className="text-sm font-medium text-foreground">{fmtPct(r.conversionRate)}</div>
+                        <div className="text-base font-medium text-foreground">{fmtPct(r.conversionRate)}</div>
                         {r.prevLabel && (
-                          <div className="text-[10px] text-muted-foreground">{r.prevLabel} → {r.label}</div>
+                          <div className="text-xs text-muted-foreground">{r.prevLabel} → {r.label}</div>
                         )}
                       </div>
                     ) : (
                       <span className="text-muted-foreground">—</span>
                     )}
                   </td>
-                  <td className="py-3 pl-3 text-right tabular-nums">
+                  <td className="py-3.5 pl-3 text-right tabular-nums">
                     {r.costPerAction !== undefined && r.costPerAction > 0 ? (
                       <div>
-                        <div className="text-sm font-medium text-foreground">{fmtKRW(r.costPerAction)}</div>
+                        <div className="text-base font-medium text-foreground">{fmtKRW(r.costPerAction)}</div>
                         {r.costLabel && (
-                          <div className="text-[10px] text-muted-foreground">{r.costLabel}</div>
+                          <div className="text-xs text-muted-foreground">{r.costLabel}</div>
                         )}
                       </div>
                     ) : (
@@ -148,18 +148,18 @@ export function FunnelMetricsTable({
         </table>
       </div>
 
-      <div className="flex items-center gap-6 mt-4 pt-3 border-t border-border text-sm">
+      <div className="flex items-center gap-6 mt-5 pt-4 border-t border-border">
         <div>
-          <div className="text-[11px] text-muted-foreground">광고비</div>
-          <div className="font-semibold tabular-nums">{fmtKRW(adSpend)}</div>
+          <div className="text-sm text-muted-foreground">광고비</div>
+          <div className="text-lg font-semibold tabular-nums mt-0.5">{fmtKRW(adSpend)}</div>
         </div>
         <div>
-          <div className="text-[11px] text-muted-foreground">매출</div>
-          <div className="font-semibold tabular-nums">{fmtKRW(revenue)}</div>
+          <div className="text-sm text-muted-foreground">매출</div>
+          <div className="text-lg font-semibold tabular-nums mt-0.5">{fmtKRW(revenue)}</div>
         </div>
         <div className="ml-auto text-right">
-          <div className="text-[11px] text-muted-foreground">ROAS</div>
-          <div className={`font-semibold tabular-nums ${roas >= 1 ? 'text-emerald-600' : 'text-amber-600'}`}>
+          <div className="text-sm text-muted-foreground">ROAS</div>
+          <div className={`text-lg font-semibold tabular-nums mt-0.5 ${roas >= 1 ? 'text-emerald-600' : 'text-amber-600'}`}>
             {fmtPct(roas)}
           </div>
         </div>

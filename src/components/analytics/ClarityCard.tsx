@@ -42,8 +42,8 @@ function Gauge({ label, value, suffix = '%', danger = false }: { label: string; 
   const display = Number.isFinite(value) ? value.toFixed(1) : '0.0'
   return (
     <div className="rounded-lg border border-border p-3">
-      <p className="text-[11px] text-muted-foreground">{label}</p>
-      <p className={`text-xl font-bold ${danger && value > 10 ? 'text-amber-600' : ''}`}>
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className={`text-2xl font-bold mt-1 ${danger && value > 10 ? 'text-amber-600' : ''}`}>
         {display}{suffix}
       </p>
     </div>
@@ -52,17 +52,17 @@ function Gauge({ label, value, suffix = '%', danger = false }: { label: string; 
 
 export function ClarityCard({ data }: { data: ClarityCardData }) {
   return (
-    <section className="rounded-xl border border-border bg-card p-4">
+    <section className="rounded-xl border border-border bg-card p-5">
       <div className="flex items-baseline justify-between mb-3 gap-2 flex-wrap">
         <div className="flex items-center gap-2">
-          <h2 className="text-sm font-semibold">Microsoft Clarity — UX 인사이트</h2>
+          <h2 className="text-base font-semibold">Microsoft Clarity — UX 인사이트</h2>
           {isSuccess(data) && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
               🔴 실시간 · 최근 {data.numOfDays}일
             </span>
           )}
           {isSuccess(data) && data.stale && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
               캐시
             </span>
           )}
@@ -72,20 +72,20 @@ export function ClarityCard({ data }: { data: ClarityCardData }) {
             href={data.consoleUrl}
             target="_blank"
             rel="noreferrer"
-            className="text-[11px] text-primary inline-flex items-center gap-1 hover:underline"
+            className="text-sm text-primary inline-flex items-center gap-1 hover:underline"
           >
-            녹화 보기 <ExternalLink size={12} />
+            녹화 보기 <ExternalLink size={14} />
           </a>
         )}
       </div>
       {isSuccess(data) && (
-        <p className="text-[11px] text-muted-foreground -mt-1 mb-3">
+        <p className="text-sm text-muted-foreground -mt-1 mb-3">
           Clarity API 는 최근 3일까지만 제공 — 조회 기간과 무관하게 실시간 최근 데이터 표시
         </p>
       )}
 
       {isUnavailable(data) && (
-        <div className="rounded-lg border border-border bg-muted/20 p-3 text-sm text-muted-foreground">
+        <div className="rounded-lg border border-border bg-muted/20 p-4 text-base text-muted-foreground">
           Clarity 미연결 — {data.reason === 'no_creds'
             ? 'CLARITY_PROJECT_ID / CLARITY_API_TOKEN 을 설정해주세요'
             : data.reason === 'rate_limit'
@@ -95,7 +95,7 @@ export function ClarityCard({ data }: { data: ClarityCardData }) {
       )}
 
       {'error' in data && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-base text-red-700">
           Clarity 호출 실패: {data.error}
         </div>
       )}
@@ -109,22 +109,18 @@ export function ClarityCard({ data }: { data: ClarityCardData }) {
             <Gauge label="Quick back" value={data.quickBackPct} danger />
             <Gauge label="Excessive" value={data.excessiveScrollPct} danger />
           </div>
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <div className="rounded-lg bg-muted/30 p-3">
-              <p className="text-[11px] text-muted-foreground">세션</p>
-              <p className="text-lg font-bold">{Math.round(data.totalSessions).toLocaleString('ko-KR')}</p>
-            </div>
-            <div className="rounded-lg bg-muted/30 p-3">
-              <p className="text-[11px] text-muted-foreground">페이지뷰</p>
-              <p className="text-lg font-bold">{Math.round(data.pageViews).toLocaleString('ko-KR')}</p>
+          <div className="pt-2">
+            <div className="rounded-lg bg-muted/30 p-4">
+              <p className="text-sm text-muted-foreground">페이지뷰</p>
+              <p className="text-xl font-bold mt-1">{Math.round(data.pageViews).toLocaleString('ko-KR')}</p>
             </div>
           </div>
           {data.byDevice.length > 0 && (
             <div className="pt-1">
-              <p className="text-[11px] text-muted-foreground mb-1.5">디바이스 분포</p>
+              <p className="text-sm text-muted-foreground mb-1.5">디바이스 분포</p>
               <div className="flex flex-wrap gap-1.5">
                 {data.byDevice.slice(0, 5).map((d) => (
-                  <span key={d.device} className="text-[11px] rounded-full bg-muted px-2 py-0.5">
+                  <span key={d.device} className="text-sm rounded-full bg-muted px-2.5 py-1">
                     {d.device} <span className="text-muted-foreground">· {d.sessions}</span>
                   </span>
                 ))}

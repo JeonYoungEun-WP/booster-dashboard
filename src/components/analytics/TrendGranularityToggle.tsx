@@ -21,7 +21,7 @@ export function TrendGranularityToggle({ value, onChange }: Props) {
           key={b.key}
           type="button"
           onClick={() => onChange(b.key)}
-          className={`text-xs px-3 py-1 rounded-md transition-colors ${
+          className={`text-sm px-3.5 py-1.5 rounded-md transition-colors ${
             value === b.key
               ? 'bg-violet-600 text-white font-medium'
               : 'text-muted-foreground hover:text-foreground'
