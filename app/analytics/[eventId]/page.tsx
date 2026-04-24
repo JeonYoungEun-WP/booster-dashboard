@@ -17,6 +17,7 @@ import { FunnelMetricsTable, type FunnelStageRow } from '@/src/components/analyt
 import { ChannelFunnelCompareTable, type ChannelFunnelGroup } from '@/src/components/analytics/ChannelFunnelCompareTable'
 import { ReportModeDialog } from '@/src/components/analytics/ReportModeDialog'
 import { ClarityCard, type ClarityCardData } from '@/src/components/analytics/ClarityCard'
+import { AiDiagnosisCard } from '@/src/components/analytics/AiDiagnosisCard'
 import type { AdChannel, CampaignPerformance } from '@/src/lib/ad-data'
 
 // 채널별 풀 퍼널 집계 (API byChannel 응답)
@@ -470,6 +471,16 @@ export default function EventAnalyticsPage() {
 
         {data && (
           <>
+            {/* AI 진단 — 최상단 5줄 요약 + AI 메뉴 링크 */}
+            <AiDiagnosisCard
+              eventId={data.eventId}
+              advertiser={data.realDataNote?.advertiser ?? `이벤트 ${data.eventId}`}
+              period={data.period}
+              funnel={data.funnel}
+              byChannel={data.byChannel}
+              byTrackingCode={data.byTrackingCode}
+            />
+
             <FunnelFlow
               stages={funnelStages}
               trueROAS={data.funnel.trueROAS_estimated}
