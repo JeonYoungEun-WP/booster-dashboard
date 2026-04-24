@@ -10,6 +10,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { formatNumber } from '@/src/lib/format';
+import { AiTableBlock, type TableBlockData } from './AiTableBlock';
 
 const CHART_COLORS = ['#4285F4', '#1877F2', '#03C75A', '#FEE500', '#a855f7', '#f97316', '#ec4899', '#64748b'];
 
@@ -80,10 +81,15 @@ function InlineChart({ chart }: { chart: ChartBlock }) {
   );
 }
 
+// 마크다운 표는 대시보드 테이블과 유사한 스타일 — 헤더 배경·striped 행·tabular-nums·overflow-x
 const MD_CLASSES = `max-w-none text-sm leading-relaxed
-  [&_table]:w-full [&_table]:border-collapse [&_table]:my-3 [&_table]:text-sm
-  [&_th]:border [&_th]:border-border [&_th]:bg-muted/50 [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-semibold
-  [&_td]:border [&_td]:border-border [&_td]:px-3 [&_td]:py-2
+  [&_table]:w-full [&_table]:border-collapse [&_table]:my-3 [&_table]:text-sm [&_table]:rounded-lg [&_table]:overflow-hidden [&_table]:border [&_table]:border-border
+  [&_thead]:bg-muted/40
+  [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-semibold [&_th]:text-xs [&_th]:text-muted-foreground [&_th]:border-b [&_th]:border-border [&_th]:whitespace-nowrap
+  [&_td]:px-3 [&_td]:py-2 [&_td]:border-b [&_td]:border-border/50 [&_td]:tabular-nums
+  [&_tbody_tr:nth-child(even)]:bg-muted/10
+  [&_tbody_tr:hover]:bg-muted/20
+  [&_tbody_tr:last-child_td]:border-b-0
   [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-2 [&_ul]:space-y-1
   [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-2 [&_ol]:space-y-1
   [&_li]:leading-relaxed
@@ -132,6 +138,20 @@ export function AdAiQueryBox() {
     return charts;
   };
 
+  const getTables = (parts: typeof messages[0]['parts']): TableBlockData[] => {
+    const tables: TableBlockData[] = [];
+    for (const part of parts) {
+      if (part.type === 'tool-tableData' || (part.type === 'dynamic-tool' && 'toolName' in part && (part as unknown as { toolName: string }).toolName === 'tableData')) {
+        const p = part as unknown as { input?: unknown };
+        if (p.input) {
+          const args = p.input as TableBlockData;
+          if (args?.columns && args?.rows) tables.push(args);
+        }
+      }
+    }
+    return tables;
+  };
+
   const getTextContent = (parts: typeof messages[0]['parts']): string => {
     return parts
       .filter(p => p.type === 'text')
@@ -174,12 +194,13 @@ export function AdAiQueryBox() {
 
           const text = getTextContent(msg.parts);
           const charts = getCharts(msg.parts);
+          const tables = getTables(msg.parts);
           const hasToolCalls = msg.parts.some(p => p.type === 'tool-invocation');
           const isThinking = hasToolCalls && !text;
 
           return (
             <div key={msg.id} className="flex justify-start">
-              <div className="max-w-[85%] rounded-xl px-4 py-3 bg-muted/50">
+              <div className="max-w-[92%] rounded-xl px-4 py-3 bg-muted/50">
                 {isThinking && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -191,8 +212,11 @@ export function AdAiQueryBox() {
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
                   </div>
                 )}
+                {tables.map((t, i) => (
+                  <AiTableBlock key={`t${i}`} data={t} />
+                ))}
                 {charts.map((chart, i) => (
-                  <InlineChart key={i} chart={chart} />
+                  <InlineChart key={`c${i}`} chart={chart} />
                 ))}
               </div>
             </div>
