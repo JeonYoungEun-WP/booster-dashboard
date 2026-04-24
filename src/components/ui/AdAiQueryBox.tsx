@@ -99,7 +99,7 @@ export function AdAiQueryBox() {
 
   const transport = useMemo(() => new DefaultChatTransport({ api: '/api/ad-chat' }), []);
 
-  const { messages, sendMessage, status, setMessages } = useChat({ transport });
+  const { messages, sendMessage, status, setMessages, error } = useChat({ transport });
 
   const isLoading = status === 'streaming' || status === 'submitted';
 
@@ -212,8 +212,17 @@ export function AdAiQueryBox() {
       </div>
 
       {status !== 'ready' && (
-        <div className="px-4 py-1 text-xs text-muted-foreground bg-muted/30 border-t border-border">
+        <div className={`px-4 py-1 text-xs border-t ${
+          status === 'error'
+            ? 'bg-red-50 text-red-700 border-red-200'
+            : 'text-muted-foreground bg-muted/30 border-border'
+        }`}>
           상태: {status} | 메시지: {messages.length}개
+        </div>
+      )}
+      {error && (
+        <div className="px-4 py-3 text-sm bg-red-50 text-red-800 border-t border-red-200 whitespace-pre-wrap">
+          <strong>AI 에러:</strong> {error.message || String(error)}
         </div>
       )}
 
