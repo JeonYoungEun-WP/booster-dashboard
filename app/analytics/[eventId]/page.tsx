@@ -221,9 +221,10 @@ export default function EventAnalyticsPage() {
     if (!data) return []
     const f = data.funnel
     const avgDuration = data.ga4.totals?.averageSessionDuration ?? 0
-    // 퍼널·세션 중복 제거 — GA 전용 보조 지표만 남김
+    // GA 전용 보조 지표 — 페이지뷰·세션·평균 체류
     return [
       { label: '페이지뷰', value: fmtNumber(f.pageViews), source: 'ga' as const },
+      { label: '세션', value: fmtNumber(f.sessions), source: 'ga' as const },
       { label: '평균 체류', value: fmtDuration(avgDuration), source: 'ga' as const },
     ]
   }, [data])
@@ -268,7 +269,7 @@ export default function EventAnalyticsPage() {
     return out
   }, [data])
 
-  // 채널 도넛 rows — byChannel + sessionsByChannel 합성
+  // 채널 도넛 rows — byChannel + sessionsByChannel 합성 (리드 내림차순)
   const channelDonutRows = useMemo<ChannelDonutRow[]>(() => {
     if (!data) return []
     return (data.byChannel ?? []).map((c) => {
@@ -280,7 +281,7 @@ export default function EventAnalyticsPage() {
         sessions,
         cvr: sessions > 0 ? c.leads / sessions : 0,
       }
-    })
+    }).sort((a, b) => b.leads - a.leads)
   }, [data, sessionsByChannel])
 
   // 퍼널 성과 요약 테이블용 — 각 단계의 수/전환율/전환 단가 그룹
@@ -325,7 +326,10 @@ export default function EventAnalyticsPage() {
     const reserveLabel = is3550 ? '예약' : '방문예약'
     const contractLabel = is3550 ? '계약' : '결제'
     const safeRate = (num: number, den: number) => (den > 0 ? num / den : 0)
-    return (data.byChannel ?? []).map((c) => {
+    return (data.byChannel ?? [])
+      .slice()
+      .sort((a, b) => b.leads - a.leads)   // 리드 내림차순 — 전체 섹션 공통 정렬
+      .map((c) => {
       const cpc = c.clicks > 0 ? c.adSpend / c.clicks : 0
       const rows: FunnelStageRow[] = [
         { label: '노출', value: c.impressions, source: 'admin' },

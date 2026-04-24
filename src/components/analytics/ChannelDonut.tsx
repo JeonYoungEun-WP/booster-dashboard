@@ -55,23 +55,23 @@ function MetricBars({ title, subtitle, rows, formatter, max }: MetricBarProps) {
   if (rows.length === 0) return null
   return (
     <div>
-      <div className="flex items-baseline justify-between mb-2.5">
+      <div className="flex items-baseline justify-between mb-1.5">
         <h3 className="text-sm font-semibold">{title}</h3>
         <span className="text-xs text-muted-foreground">{subtitle}</span>
       </div>
-      <ul className="space-y-2">
+      <ul className="space-y-1">
         {rows.map((r) => {
           const pct = max > 0 ? Math.max(2, (r.value / max) * 100) : 0
           return (
-            <li key={r.channel} className="flex items-center gap-3">
-              <span className="w-20 shrink-0 text-sm font-medium truncate">{r.name}</span>
-              <div className="flex-1 h-5 bg-muted/50 rounded overflow-hidden">
+            <li key={r.channel} className="flex items-center gap-2">
+              <span className="w-14 shrink-0 text-xs font-medium truncate">{r.name}</span>
+              <div className="flex-1 h-3.5 bg-muted/50 rounded overflow-hidden">
                 <div
                   className="h-full rounded transition-all"
                   style={{ width: `${pct}%`, background: r.color }}
                 />
               </div>
-              <span className="w-24 text-right text-sm tabular-nums font-semibold">
+              <span className="w-20 text-right text-xs tabular-nums font-semibold">
                 {formatter(r.value)}
               </span>
             </li>
@@ -83,15 +83,21 @@ function MetricBars({ title, subtitle, rows, formatter, max }: MetricBarProps) {
 }
 
 export function ChannelDonut({ rows }: Props) {
-  // 도넛: 리드 기준 비중 (세션 제거 · 탭 없음)
+  // 채널 순서 = 리드 내림차순 (전체 섹션에서 일관 적용)
+  const sortedRows = useMemo(
+    () => [...rows].sort((a, b) => b.leads - a.leads),
+    [rows],
+  )
+
+  // 도넛: 리드 기준 비중
   const donutData = useMemo(() => {
-    return rows.map((r, i) => ({
+    return sortedRows.map((r, i) => ({
       name: CHANNEL_LABEL[r.channel as AdChannel] ?? r.channel,
       channel: r.channel,
       value: r.leads,
       color: colorFor(r.channel, i),
     }))
-  }, [rows])
+  }, [sortedRows])
 
   const total = useMemo(() => donutData.reduce((s, d) => s + d.value, 0), [donutData])
 
@@ -102,46 +108,46 @@ export function ChannelDonut({ rows }: Props) {
     }))
   }, [donutData, total])
 
-  // 광고비 막대
+  // 광고비 막대 — 채널 순서 유지 (리드 내림차순)
   const adSpendBars = useMemo(() => {
-    return rows.map((r, i) => ({
+    return sortedRows.map((r, i) => ({
       channel: r.channel,
       name: CHANNEL_LABEL[r.channel as AdChannel] ?? r.channel,
       value: r.adSpend,
       color: colorFor(r.channel, i),
-    })).sort((a, b) => b.value - a.value)
-  }, [rows])
+    }))
+  }, [sortedRows])
   const maxAdSpend = useMemo(() => Math.max(0, ...adSpendBars.map((r) => r.value)), [adSpendBars])
 
-  // 전환율 막대 (세션→리드 CVR 대신 전체 대비 리드 기여율이나 등) — 기존 cvr 필드 사용
+  // 전환율 막대 — 채널 순서 유지 (리드 내림차순)
   const cvrBars = useMemo(() => {
-    return rows.map((r, i) => ({
+    return sortedRows.map((r, i) => ({
       channel: r.channel,
       name: CHANNEL_LABEL[r.channel as AdChannel] ?? r.channel,
       value: r.cvr,
       color: colorFor(r.channel, i),
-    })).sort((a, b) => b.value - a.value)
-  }, [rows])
+    }))
+  }, [sortedRows])
   const maxCvr = useMemo(() => Math.max(0, ...cvrBars.map((r) => r.value)), [cvrBars])
 
   return (
-    <section className="rounded-xl border border-border bg-card p-5">
-      <div className="flex items-baseline justify-between mb-4">
+    <section className="rounded-xl border border-border bg-card p-4 h-full flex flex-col">
+      <div className="flex items-baseline justify-between mb-3">
         <h2 className="text-base font-semibold">채널 비중</h2>
         <span className="text-sm text-muted-foreground">리드 기준</span>
       </div>
 
-      {/* 도넛 — 상단 중앙 배치 */}
-      <div className="flex justify-center mb-4">
-        <div className="relative" style={{ width: 220, height: 220 }}>
+      {/* 도넛 + 범례 — 나란히 배치 (세로 높이 절약) */}
+      <div className="flex items-center gap-3 mb-4">
+        <div className="relative shrink-0" style={{ width: 140, height: 140 }}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
                 data={donutData}
                 dataKey="value"
                 nameKey="name"
-                innerRadius={68}
-                outerRadius={105}
+                innerRadius={42}
+                outerRadius={66}
                 paddingAngle={2}
                 stroke="#fff"
                 strokeWidth={2}
@@ -153,39 +159,36 @@ export function ChannelDonut({ rows }: Props) {
                 ))}
               </Pie>
               <Tooltip
-                contentStyle={{ fontSize: 14, borderRadius: 8, border: '1px solid #e5e8eb' }}
+                contentStyle={{ fontSize: 13, borderRadius: 8, border: '1px solid #e5e8eb' }}
                 formatter={(v) => fmtNumber(typeof v === 'number' ? v : 0)}
               />
             </PieChart>
           </ResponsiveContainer>
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <span className="text-sm text-muted-foreground">총 리드</span>
-            <span className="text-2xl font-bold tabular-nums">{fmtNumber(total)}</span>
+            <span className="text-[10px] text-muted-foreground leading-none">총 리드</span>
+            <span className="text-base font-bold tabular-nums leading-tight mt-0.5">{fmtNumber(total)}</span>
           </div>
         </div>
+
+        {/* 범례 — 도넛 오른쪽, 채널 순 */}
+        <ul className="flex-1 min-w-0 space-y-1.5">
+          {legend.map((d) => (
+            <li key={d.channel} className="flex items-center gap-1.5 text-sm">
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: d.color }} />
+              <span className="font-medium truncate">{d.name}</span>
+              <span className="ml-auto tabular-nums text-xs text-muted-foreground">{(d.share * 100).toFixed(1)}%</span>
+            </li>
+          ))}
+          {legend.length === 0 && (
+            <li className="text-sm text-muted-foreground py-2 text-center">
+              채널 데이터가 없습니다
+            </li>
+          )}
+        </ul>
       </div>
 
-      {/* 범례 — 도넛 아래, 한 줄에 3개씩 여유롭게 */}
-      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-2 mb-5 pb-5 border-b border-border">
-        {legend.map((d) => (
-          <li key={d.channel} className="flex items-center gap-2.5 text-base">
-            <span className="w-3 h-3 rounded-full shrink-0" style={{ background: d.color }} />
-            <span className="font-medium truncate">{d.name}</span>
-            <span className="ml-auto tabular-nums">
-              <span className="text-muted-foreground text-sm mr-2">{(d.share * 100).toFixed(1)}%</span>
-              <span className="font-semibold">{fmtNumber(d.value)}</span>
-            </span>
-          </li>
-        ))}
-        {legend.length === 0 && (
-          <li className="col-span-full text-sm text-muted-foreground py-3 text-center">
-            채널 데이터가 없습니다
-          </li>
-        )}
-      </ul>
-
       {/* 광고비·전환율 막대그래프 — 아래 2단 */}
-      <div className="space-y-5">
+      <div className="space-y-4 pt-4 border-t border-border flex-1">
         <MetricBars
           title="광고비"
           subtitle="채널별 지출"

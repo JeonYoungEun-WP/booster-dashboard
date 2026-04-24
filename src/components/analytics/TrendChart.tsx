@@ -1,7 +1,7 @@
 'use client'
 
 import {
-  ComposedChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
 
 export interface TrendPoint {
@@ -25,7 +25,7 @@ export function TrendChart({ data, actions, subtitle }: TrendChartProps) {
       <div className="flex items-center justify-between mb-4 gap-2">
         <div className="min-w-0">
           <h2 className="text-base font-semibold">일자별 추이</h2>
-          <p className="text-sm text-muted-foreground">{subtitle ?? '리드·예약 일별 추이'}</p>
+          <p className="text-sm text-muted-foreground">{subtitle ?? '세션(선) · 리드·예약(막대)'}</p>
         </div>
         {actions && <div className="shrink-0">{actions}</div>}
       </div>
@@ -39,29 +39,49 @@ export function TrendChart({ data, actions, subtitle }: TrendChartProps) {
               tickFormatter={(d: string) => d.slice(5)}
             />
             <YAxis
+              yAxisId="left"
               tick={{ fontSize: 13 }}
-              label={{ value: '리드·예약', angle: -90, position: 'insideLeft', fontSize: 13, fill: '#f59e0b' }}
+              label={{ value: '세션', angle: -90, position: 'insideLeft', fontSize: 13, fill: '#8b5cf6' }}
+            />
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              tick={{ fontSize: 13 }}
+              label={{ value: '리드·예약', angle: 90, position: 'insideRight', fontSize: 13, fill: '#f59e0b' }}
             />
             <Tooltip
               contentStyle={{ fontSize: 14, borderRadius: 8, border: '1px solid #e5e8eb' }}
               labelFormatter={(label) => String(label)}
             />
             <Legend wrapperStyle={{ fontSize: 13 }} />
+            {/* 리드·예약: 우측 Y축 · 막대 */}
             <Bar
+              yAxisId="right"
               dataKey="leads"
               name="리드"
               fill="#f59e0b"
               fillOpacity={0.75}
-              barSize={16}
-              radius={[3, 3, 0, 0]}
+              barSize={14}
+              radius={[2, 2, 0, 0]}
             />
             <Bar
+              yAxisId="right"
               dataKey="reservations"
               name="예약"
               fill="#10b981"
               fillOpacity={0.9}
-              barSize={16}
-              radius={[3, 3, 0, 0]}
+              barSize={14}
+              radius={[2, 2, 0, 0]}
+            />
+            {/* 세션: 좌측 Y축 · 선 (막대 위로 올라오도록 마지막) */}
+            <Line
+              yAxisId="left"
+              type="monotone"
+              dataKey="sessions"
+              name="세션"
+              stroke="#8b5cf6"
+              strokeWidth={2.5}
+              dot={false}
             />
           </ComposedChart>
         </ResponsiveContainer>
