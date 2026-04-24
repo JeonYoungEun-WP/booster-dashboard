@@ -1,33 +1,138 @@
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css");
 @import "tailwindcss";
 
+/* ────────────────────────────────────────────────────────────
+ * boosterMAX 디자인 시스템
+ *  Source: https://call-convo-master.vercel.app/design-guide
+ *  Primary: HSL(157 52% 48%)  — 브랜드 그린
+ *  Gradient: 135deg HSL(141 53% 63%) → HSL(214 93% 68%)  — 그린 → 블루
+ *
+ *  참고: 매체별 고유 색 (Meta #1877F2 · Google #4285F4 · Naver #03C75A
+ *  · Kakao #FEE500 · TikTok #000 · 당근 #FF7E1D) 은 src/lib/ad-data.ts 에서
+ *  별도 유지하며 여기 토큰에 흡수되지 않음.
+ * ──────────────────────────────────────────────────────────── */
+:root {
+  --background: 0 0% 100%;
+  --foreground: 230 10% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 230 10% 11%;
+
+  --primary: 157 52% 48%;
+  --primary-foreground: 0 0% 100%;
+  --primary-gradient-from: 141 53% 63%;
+  --primary-gradient-to: 214 93% 68%;
+
+  --secondary: 220 13% 91%;
+  --secondary-foreground: 230 10% 11%;
+
+  --muted: 220 10% 96%;
+  --muted-foreground: 220 9% 46%;
+
+  --accent: 220 10% 96%;
+  --accent-foreground: 230 10% 11%;
+
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+
+  --success: 142 71% 45%;
+  --success-foreground: 0 0% 100%;
+
+  --warning: 38 92% 50%;
+  --warning-foreground: 0 0% 100%;
+
+  --border: 220 9% 90%;
+  --input: 220 9% 86%;
+  --ring: 157 52% 48%;
+
+  --radius: 0.5rem;
+
+  /* 사이드바 */
+  --sidebar-background: 0 0% 100%;
+  --sidebar-foreground: 220 13% 26%;
+  --sidebar-primary: 157 52% 48%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 157 100% 96%;
+  --sidebar-accent-foreground: 157 52% 48%;
+  --sidebar-border: 220 13% 91%;
+  --sidebar-ring: 157 52% 48%;
+}
+
 @theme inline {
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
 
-  --color-primary: #8b5cf6;
-  --color-primary-hover: #7c3aed;
-  --color-primary-light: #f5f3ff;
+  /* Tailwind 토큰 매핑 — CSS var 를 hsl() 로 소비 */
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-primary-hover: hsl(157 52% 42%);        /* 버튼 호버 약간 진하게 */
+  --color-primary-light: hsl(157 100% 96%);       /* 사이드바 active 배경과 동일 */
 
-  --color-text-dark: #171819;
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-success: hsl(var(--success));
+  --color-success-foreground: hsl(var(--success-foreground));
+
+  --color-warning: hsl(var(--warning));
+  --color-warning-foreground: hsl(var(--warning-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-foreground: hsl(var(--foreground));
+  --color-background: hsl(var(--background));
+  --color-card: hsl(var(--card));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  /* 레거시 팔레트 토큰 — 기존 컴포넌트 호환 */
+  --color-text-dark: hsl(var(--foreground));
   --color-text-gray: #454f5d;
-  --color-text-medium: #868e96;
+  --color-text-medium: hsl(var(--muted-foreground));
   --color-text-light: #b0b8c1;
 
-  --color-bg-white: #ffffff;
-  --color-bg-light: #f5f6f8;
+  --color-bg-white: hsl(var(--background));
+  --color-bg-light: hsl(var(--muted));
   --color-bg-section: #f8f9fc;
   --color-bg-dark: #1a1f27;
 
-  --color-border: #e5e8eb;
-  --color-card: #ffffff;
-  --color-muted: #f5f6f8;
-  --color-muted-foreground: #868e96;
-  --color-foreground: #171819;
-  --color-background: #ffffff;
+  --radius: var(--radius);
 }
 
 body {
-  background: var(--color-bg-white);
-  color: var(--color-text-dark);
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
   font-family: var(--font-sans);
 }
+
+/* ───── 브랜드 그라디언트 유틸 (135deg 그린 → 블루) ───── */
+.bg-brand-gradient {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary-gradient-from)) 0%,
+    hsl(var(--primary-gradient-to)) 100%
+  );
+}
+.text-brand-gradient {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary-gradient-from)) 0%,
+    hsl(var(--primary-gradient-to)) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* primary 토큰의 유틸 — alpha 단계 필요 시 */
+.bg-primary\/5  { background-color: hsl(var(--primary) / 0.05); }
+.bg-primary\/10 { background-color: hsl(var(--primary) / 0.10); }
+.bg-primary\/15 { background-color: hsl(var(--primary) / 0.15); }
+.bg-primary-light { background-color: hsl(157 100% 96%); }
+.border-primary\/20 { border-color: hsl(var(--primary) / 0.20); }
+.border-primary\/30 { border-color: hsl(var(--primary) / 0.30); }
+.ring-primary\/30 { --tw-ring-color: hsl(var(--primary) / 0.30); }

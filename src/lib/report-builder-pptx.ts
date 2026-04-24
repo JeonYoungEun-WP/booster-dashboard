@@ -11,19 +11,24 @@
 import PptxGenJS from 'pptxgenjs'
 import type { EventAnalyticsResponse } from './event-analytics-service'
 
-// ───── 브랜드 / 컬러 토큰 (boosterMAX 팔레트) ─────
+// ───── 브랜드 / 컬러 토큰 (boosterMAX 디자인 시스템)
+//    Source: call-convo-master design-guide
+//    Primary:      HSL(157 52% 48%)  = #3ABA85
+//    Gradient from: HSL(141 53% 63%) = #65CC91
+//    Gradient to:   HSL(214 93% 68%) = #5FA8FA
+// ──────────────────────────────────────────────
 const BRAND_NAME = 'boosterMAX'
 const BRAND_FONT = 'Pretendard'
-const COLOR_BRAND = '62A4FA'          // main (블루)
-const COLOR_BRAND_DARK = '3983E2'     // text-main (딥 블루)
-const COLOR_BRAND_SUB = '70D392'      // sub (그린) — 포지티브 · 하이라이트
-const COLOR_BRAND_ACCENT = '25A9B2'   // 강조 · 그라디언트 끝점
-const COLOR_TEXT_DARK = '171819'
-const COLOR_TEXT_MUTED = '868E96'
-const COLOR_BORDER = 'E5E8EB'
-const COLOR_BG_LIGHT = 'F5F6F8'
-const COLOR_SUCCESS = '70D392'        // 브랜드 그린 (기존 emerald 대신)
-const COLOR_WARN = 'F59E0B'
+const COLOR_BRAND = '3ABA85'          // primary (브랜드 그린)
+const COLOR_BRAND_DARK = '2A9E6F'     // primary hover
+const COLOR_BRAND_SUB = '65CC91'      // 그라디언트 시작 (밝은 그린)
+const COLOR_BRAND_ACCENT = '5FA8FA'   // 그라디언트 끝 (블루)
+const COLOR_TEXT_DARK = '191A1F'      // foreground (HSL 230 10% 11%)
+const COLOR_TEXT_MUTED = '6B7280'     // muted-foreground
+const COLOR_BORDER = 'E1E4E9'         // border (HSL 220 9% 90%)
+const COLOR_BG_LIGHT = 'F3F4F6'       // muted (HSL 220 10% 96%)
+const COLOR_SUCCESS = '22C55E'        // success (HSL 142 71% 45%)
+const COLOR_WARN = 'F59E0B'           // warning (HSL 38 92% 50%)
 
 function fmtKRW(n: number): string {
   return '₩' + Math.round(n).toLocaleString('ko-KR')

@@ -41,7 +41,7 @@ export function TrendChart({ data, actions, subtitle }: TrendChartProps) {
             <YAxis
               yAxisId="left"
               tick={{ fontSize: 13 }}
-              label={{ value: '세션', angle: -90, position: 'insideLeft', fontSize: 13, fill: '#8b5cf6' }}
+              label={{ value: '세션', angle: -90, position: 'insideLeft', fontSize: 13, fill: '#3983E2' }}
             />
             <YAxis
               yAxisId="right"
@@ -79,7 +79,7 @@ export function TrendChart({ data, actions, subtitle }: TrendChartProps) {
               type="monotone"
               dataKey="sessions"
               name="세션"
-              stroke="#8b5cf6"
+              stroke="#3983E2"
               strokeWidth={2.5}
               dot={false}
             />

@@ -14,16 +14,16 @@ import type { EventAnalyticsResponse } from './event-analytics-service'
 
 const BRAND_NAME = 'boosterMAX'
 const BRAND_FONT = 'Pretendard, system-ui, sans-serif'
-// boosterMAX 팔레트
-const COLOR_BRAND = '#62A4FA'           // main (블루)
-const COLOR_BRAND_DARK = '#3983E2'      // text-main (딥 블루)
-const COLOR_BRAND_SUB = '#70D392'       // sub (그린) — 포지티브
-const COLOR_BRAND_ACCENT = '#25A9B2'    // 그라디언트 악센트 (티얼)
-const COLOR_TEXT_DARK = '#171819'
-const COLOR_TEXT_MUTED = '#868E96'
-const COLOR_BORDER = '#E5E8EB'
-const COLOR_BG_LIGHT = '#F5F6F8'
-const COLOR_SUCCESS = '#70D392'         // 브랜드 그린
+// boosterMAX 디자인 시스템 (design-guide)
+const COLOR_BRAND = '#3ABA85'           // primary (브랜드 그린)
+const COLOR_BRAND_DARK = '#2A9E6F'      // primary hover
+const COLOR_BRAND_SUB = '#65CC91'       // 그라디언트 시작 (밝은 그린)
+const COLOR_BRAND_ACCENT = '#5FA8FA'    // 그라디언트 끝 (블루)
+const COLOR_TEXT_DARK = '#191A1F'
+const COLOR_TEXT_MUTED = '#6B7280'
+const COLOR_BORDER = '#E1E4E9'
+const COLOR_BG_LIGHT = '#F3F4F6'
+const COLOR_SUCCESS = '#22C55E'
 const COLOR_WARN = '#F59E0B'
 
 function fmtKRW(n: number): string {
@@ -81,8 +81,8 @@ function renderCover(data: EventAnalyticsResponse, generatedAt: string): HTMLDiv
   const periodLabel = `${data.period.startDate} ~ ${data.period.endDate}`
 
   const el = createBaseSlide()
-  // boosterMAX 브랜드 그라디언트 — sub(그린) → main(블루) · 104deg
-  el.style.background = `linear-gradient(104deg, ${COLOR_BRAND_SUB} 20.18%, ${COLOR_BRAND} 96.19%)`
+  // boosterMAX 브랜드 그라디언트 — 135deg 그린 → 블루 (design-guide)
+  el.style.background = `linear-gradient(135deg, ${COLOR_BRAND_SUB} 0%, ${COLOR_BRAND_ACCENT} 100%)`
   el.style.color = '#FFFFFF'
   el.style.padding = '80px'
   el.style.overflow = 'hidden'

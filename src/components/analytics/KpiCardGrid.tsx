@@ -87,7 +87,7 @@ export function KpiCardGrid({ items, prevLabel = '전기' }: Props) {
         const delta = computeDelta(it.value, it.prevValue, it.deltaAsPoints)
         const hl = it.highlight
         const cardCls = hl === 'lead'
-          ? 'bg-violet-50/60 border-violet-200'
+          ? 'bg-emerald-50/60 border-emerald-200'
           : hl === 'roas'
             ? 'bg-amber-50/60 border-amber-200'
             : 'bg-card border-border'
@@ -111,7 +111,7 @@ export function KpiCardGrid({ items, prevLabel = '전기' }: Props) {
             {(it.conversion || it.unitPrice) && (
               <div className="mt-2 pt-2 border-t border-border/60 space-y-0.5">
                 {it.conversion && (
-                  <p className="text-[11px] text-violet-600 font-medium tabular-nums">{it.conversion}</p>
+                  <p className="text-[11px] text-emerald-600 font-medium tabular-nums">{it.conversion}</p>
                 )}
                 {it.unitPrice && (
                   <p className="text-[11px] text-muted-foreground tabular-nums">{it.unitPrice}</p>

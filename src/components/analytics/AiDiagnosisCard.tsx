@@ -159,51 +159,39 @@ export function AiDiagnosisCard({ eventId, advertiser, period, funnel, byChannel
   const intro = `${advertiser} (이벤트 ID: ${eventId}, ${period.startDate} ~ ${period.endDate}) 성과 진단입니다.`
 
   return (
-    <section
-      className="rounded-xl border border-sky-200 p-5 shadow-sm"
-      style={{
-        // boosterMAX 그라디언트 104deg (sub → main) · 옅게
-        background: 'linear-gradient(104deg, rgba(112,211,146,0.12) 20.18%, rgba(98,164,250,0.12) 96.19%), #FFFFFF',
-      }}
-    >
+    <section className="rounded-xl border border-primary/20 bg-primary/5 p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-center gap-2">
-          <div
-            className="w-8 h-8 rounded-lg text-white flex items-center justify-center shadow-sm"
-            style={{ background: 'linear-gradient(104deg, #70D392 20.18%, #62A4FA 96.19%)' }}
-          >
+          <div className="w-8 h-8 rounded-lg text-white flex items-center justify-center shadow-sm bg-brand-gradient">
             <Sparkles size={16} />
           </div>
           <div>
-            <h2 className="text-base font-bold" style={{ color: '#1E4B8E' }}>AI 진단</h2>
-            <p className="text-xs" style={{ color: '#3983E2' }}>광고 성과 자동 분석 리포트</p>
+            <h2 className="text-base font-bold text-primary">AI 진단</h2>
+            <p className="text-xs text-primary/80">광고 성과 자동 분석 리포트</p>
           </div>
         </div>
         <Link
           href="/ai"
-          className="inline-flex items-center gap-1 text-sm font-semibold hover:underline whitespace-nowrap"
-          style={{ color: '#3983E2' }}
+          className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline whitespace-nowrap"
           title="AI 광고성과 분석 메뉴로 이동"
         >
           AI 진단으로 이동하기 <ArrowRight size={14} />
         </Link>
       </div>
 
-      <p className="text-sm mb-3" style={{ color: '#1E4B8E' }}>{intro}</p>
+      <p className="text-sm mb-3 text-foreground">{intro}</p>
 
       <ul className="space-y-2.5">
         {bullets.map((text, i) => {
           const colonIdx = text.indexOf(':')
           const prefix = colonIdx > -1 ? text.slice(0, colonIdx + 1) : ''
           const rest = colonIdx > -1 ? text.slice(colonIdx + 1) : text
+          const isLast = i === bullets.length - 1
           return (
             <li key={i} className="flex items-start gap-2 text-sm leading-relaxed">
-              <span
-                className="mt-1.5 flex-shrink-0 w-1.5 h-1.5 rounded-full"
-                style={{ background: i === bullets.length - 1 ? '#70D392' : '#62A4FA' }}
-              />
+              <span className={`mt-1.5 flex-shrink-0 w-1.5 h-1.5 rounded-full ${isLast ? 'bg-primary' : 'bg-primary/60'}`} />
               <span className="flex-1">
-                {prefix && <strong style={{ color: '#1E4B8E' }}>{prefix}</strong>}
+                {prefix && <strong className="text-primary">{prefix}</strong>}
                 <span className="text-foreground/90">{rest}</span>
               </span>
             </li>

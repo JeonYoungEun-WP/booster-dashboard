@@ -56,7 +56,7 @@ export function Sidebar() {
     <aside className="hidden md:flex flex-col shrink-0 border-r border-border bg-white/60 backdrop-blur sticky top-0 h-screen"
            style={{ width: 72 }}>
       <div className="flex items-center justify-center h-14 border-b border-border">
-        <Link href="/" className="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-500 text-white font-bold text-sm flex items-center justify-center" title="Booster Dashboard">
+        <Link href="/" className="w-9 h-9 rounded-lg bg-brand-gradient text-white font-bold text-sm flex items-center justify-center shadow-sm" title="boosterMAX Dashboard">
           B
         </Link>
       </div>

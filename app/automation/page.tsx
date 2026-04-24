@@ -18,7 +18,7 @@ export default function AutomationPage() {
           <p className="text-sm text-muted-foreground mt-1">지표·계정·콘텐츠 조건을 감시하고 이메일·Slack으로 알림 (개발 예정)</p>
         </div>
 
-        <div className="rounded-xl border border-dashed border-border bg-gradient-to-br from-violet-50 to-transparent p-6 mb-6">
+        <div className="rounded-xl border border-dashed border-border bg-gradient-to-br from-emerald-50 to-transparent p-6 mb-6">
           <p className="text-sm text-muted-foreground">
             자동화 룰 엔진은 현재 개발 중입니다. 아래 6가지 유형을 지원할 예정입니다.
           </p>

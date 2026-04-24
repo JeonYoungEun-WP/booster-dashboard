@@ -79,7 +79,7 @@ function CoverPage({ title, subtitle, startDate, endDate, onTitleChange, onSubti
 }) {
   return (
     <div className="flex-1 flex flex-col">
-      <div className="flex-1 rounded-lg bg-gradient-to-br from-violet-500 via-purple-500 to-indigo-500 flex items-center justify-center relative overflow-hidden mb-8">
+      <div className="flex-1 rounded-lg bg-brand-gradient flex items-center justify-center relative overflow-hidden mb-8">
         <div className="absolute inset-0 opacity-20" style={{
           backgroundImage: 'radial-gradient(circle at 20% 30%, white 0%, transparent 40%), radial-gradient(circle at 80% 70%, white 0%, transparent 40%)',
         }} />
@@ -89,7 +89,7 @@ function CoverPage({ title, subtitle, startDate, endDate, onTitleChange, onSubti
         </div>
       </div>
       <div className="space-y-3 px-2">
-        <div className="border-l-4 border-violet-500 pl-4">
+        <div className="border-l-4 border-emerald-500 pl-4">
           <input
             type="text"
             value={title}

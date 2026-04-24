@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 export default function SettingsPage() {
   const [workspaceName, setWorkspaceName] = useState('위픽부스터');
-  const [brandColor, setBrandColor] = useState('#8b5cf6');
+  const [brandColor, setBrandColor] = useState('#25a9b2');
   const [websiteUrl, setWebsiteUrl] = useState('https://booster.im');
 
   return (

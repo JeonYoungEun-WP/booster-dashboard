@@ -18,7 +18,7 @@ const SOURCE_STYLE: Record<DataSource, { label: string; className: string }> = {
   ga:      { label: 'GA',     className: 'bg-blue-50 text-blue-700 border-blue-200' },
   admin:   { label: '어드민', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   dummy:   { label: '더미',   className: 'bg-amber-50 text-amber-700 border-amber-200' },
-  clarity: { label: 'Clarity',className: 'bg-violet-50 text-violet-700 border-violet-200' },
+  clarity: { label: 'Clarity',className: 'bg-teal-50 text-teal-700 border-teal-200' },
 }
 
 export function SourceBadge({ source }: { source: DataSource }) {
