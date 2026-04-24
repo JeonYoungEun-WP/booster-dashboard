@@ -26,6 +26,7 @@ npm install
 | `GCP_SERVICE_ACCOUNT_EMAIL` | `ga4-heypick-reader@project-150ad5c5-0e90-4383-9bc.iam.gserviceaccount.com` |
 | `CLARITY_PROJECT_ID` | `p0v1letcwq` |
 | `CLARITY_API_TOKEN` | Vercel Dashboard 에서 복사 *(아래 참조)* |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | AI 챗용 Gemini 키 — https://aistudio.google.com/app/apikey |
 
 **`CLARITY_API_TOKEN` 가져오는 법**:
 1. https://vercel.com/wepick/booster-dashboard/settings/environment-variables 접속
@@ -82,32 +83,50 @@ npm run dev            # http://localhost:3002
 - [x] `src/lib/real-data/event-3550.ts` · `event-3550-leads.ts`
 
 ### 공통 UI 고도화
-- [x] KPI 증감률 그리드 (전기 대비 ±% 표시)
-- [x] 채널 도넛 차트 — 채널별 기여 시각화
+- [x] 채널 도넛 차트 — 채널별 기여 시각화 (리드 내림차순 · 광고비 막대 · 전환율 3단계)
+- [x] **채널 Radar 차트** — 2+ 채널 시 자동 전환 (리드·예약·계약·ROAS 4축)
 - [x] 추이 차트 일/주/월 토글
-- [x] 채널별 풀 퍼널 테이블 (FunnelMetricsTable)
+- [x] 채널별 통합 퍼널 테이블 (ChannelFunnelCompareTable) — 단계 컬럼 공유로 공간 효율화
+- [x] TrackingCodeTable 접기/펼치기 + 합계 행
+- [x] 데이터 출처 뱃지 (🟢어드민·🔵GA·🟡더미·🟣Clarity)
+- [x] 폰트 가독성 업 (text-xs→sm, tiny 뱃지 9px→11px)
+
+### AI 챗 (/ai) — 이벤트 단위 분석 가능
+- [x] Gemini 2.5 Flash 모델
+- [x] **getEventFunnel 도구** — 이벤트 ID/URL 자동 감지 후 풀 퍼널 데이터 조회
+- [x] 내부 함수 직호출 (`buildEventAnalytics`) — Vercel 보호 영향 없음
+- [x] 에러 메시지 UI 노출 (빨간 배너)
+- [x] 시스템 프롬프트: 이벤트·일반 질문 분기 규칙 + 답변 포맷 (액션 제안 포함)
 
 ### 파일 구조
 ```
 app/
-  analytics/[eventId]/page.tsx            ← 이벤트 단위 분석 페이지
+  analytics/[eventId]/page.tsx            ← 이벤트 단위 분석 페이지 (1042, 3550)
+  ai/page.tsx                             ← AI 챗 페이지
   api/
-    event-analytics/route.ts              ← 퍼널 통합 API
+    event-analytics/route.ts              ← 얇은 래퍼 (buildEventAnalytics 소비자)
+    ad-chat/route.ts                      ← AI 스트림 API + getEventFunnel 도구
     ga4/page-debug/route.ts               ← GA4 pagePath 진단
     ga4/route.ts                          ← GA4 summary
     ad-performance/route.ts               ← 광고 채널 요약
 src/
   components/analytics/
-    FunnelFlow.tsx                        ← 6단계 퍼널 + 하단 4카드
+    FunnelFlow.tsx                        ← 5단계 퍼널 + 하단 4카드 (세션 제거 후)
     KpiGrid.tsx                           ← KPI + SourceBadge
-    TrendChart.tsx                        ← ComposedChart (Line+Bar)
-    TrackingCodeTable.tsx                 ← 광고세트별 성과
-    SourceTable.tsx                       ← GA4 소스/매체
+    TrendChart.tsx                        ← ComposedChart (세션 Line + 리드·예약 Bar)
+    TrackingCodeTable.tsx                 ← 광고세트별 성과 (접기+합계)
+    ChannelFunnelCompareTable.tsx         ← 채널별 통합 퍼널 테이블 (단계 컬럼 공유)
+    ChannelDonut.tsx                      ← 채널 비중 + 광고비·CVR 막대
+    ChannelRadar.tsx                      ← 채널 Radar (2+채널)
+    SourceTable.tsx                       ← GA4 소스/매체 (Sessions 제외)
     AdChannelMini.tsx                     ← 채널별 광고 요약
     ClarityCard.tsx                       ← UX 인사이트
+  components/ui/
+    AdAiQueryBox.tsx                      ← AI 챗 UI (error 배너 포함)
   lib/
     mapping.ts                            ← #{eventId}_{code} 파싱·필터
     ad-data.ts                            ← 광고 6채널 시뮬·캠페인 태그
+    event-analytics-service.ts            ← 이벤트 퍼널 핵심 로직 (route+AI 공유)
     channels/
       ga4.ts                              ← WIF + Data API
       clarity.ts                          ← Export API + 캐시
@@ -115,6 +134,8 @@ src/
     real-data/
       event-1042.ts                       ← 더블어스 광고·매출 하드코딩
       event-1042-leads.ts                 ← 실 리드 타임스탬프 437건
+      event-3550.ts                       ← 굿리치 광고·매출·채널별 집계
+      event-3550-leads.ts                 ← 굿리치 리드 타임스탬프
 ```
 
 ---

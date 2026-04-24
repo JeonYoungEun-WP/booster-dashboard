@@ -37,11 +37,63 @@
 - 주요 라우트:
   - `/` — 대시보드 (KPI · 채널 비교 · 일자 추이 · 상위 캠페인)
   - `/report` — Adriel 스타일 4페이지 리포트 (표지 · 지표 · 추이 · 소재)
+  - `/analytics/[eventId]` — 이벤트 단위 풀 퍼널 대시보드 (1042 더블어스 · 3550 굿리치)
   - `/creatives` — 소재별 성과 분석
   - `/ai` — AI 분석 챗봇 (Gemini 2.5 Flash)
   - `/integrations` — 매체 연결 상태
   - `/api/ad-performance` — 대시보드 데이터 API
+  - `/api/event-analytics` — 이벤트 퍼널 분석 API (공유 서비스 래퍼)
   - `/api/ad-chat` — AI 분석 스트림 API
+  - `/api/ga4/page-debug` — GA4 pagePath 진단 엔드포인트
+
+## AI 챗 (/ai)
+
+Gemini 2.5 Flash 기반. 광고 매체 데이터 + 이벤트 퍼널 데이터 이중 소스 분석.
+
+### 시스템 프롬프트 핵심 지침 (`app/api/ad-chat/route.ts`)
+- 이벤트 ID (예: 1042·3550) 또는 `/analytics/<id>` URL 이 질문에 포함되면 `getEventFunnel` 우선 호출
+- 일반 "성과·ROAS·채널" 질문 → `getChannelSummary` · `getTotalSummary`
+- "추이·트렌드" → `getDailyTrend`, "캠페인" → `getCampaignPerformance`, "소재" → `getCreativePerformance`
+- 되묻지 말고 도구 먼저 호출, 기본 기간 최근 30일
+- 현재 대화 맥락에서 이벤트 ID 자동 추출 → 프롬프트에 힌트 주입
+
+### 제공 도구
+| 도구 | 용도 |
+|---|---|
+| `getEventFunnel` | 이벤트 풀 퍼널 (광고비·노출·클릭·세션·리드·예약·결제·ROAS·채널별·트래킹코드별) |
+| `getTotalSummary` | 전체 채널 합계 성과 |
+| `getChannelSummary` | 채널별 성과 비교 |
+| `getDailyTrend` | 일자별 추이 |
+| `getDailyByChannel` | 일자·채널별 비용 |
+| `getCampaignPerformance` | 캠페인별 성과 |
+| `getCreativePerformance` | 소재별 성과 |
+| `getIntegrationStatus` | 매체 연결 상태 |
+| `chartData` | 채팅 내 차트 렌더링 (bar/line/pie, 최대 4 시리즈) |
+
+### 답변 포맷 규칙
+- 핵심 인사이트는 bullet (•) 로
+- 수치는 통화·숫자 포맷 (₩1,234,567 / 12.3% 등)
+- 이벤트 분석 응답 필수 구성:
+  1) 핵심 숫자 (광고비·리드·예약·결제·ROAS)
+  2) 채널별 비교 (어디가 이겼나)
+  3) 트래킹코드 best/worst 3개
+  4) 개선 액션 제안
+  5) 데이터 소스 신뢰도 (dummy 섞였으면 표기)
+
+### 데이터 접근 원칙 (중요)
+- `/api/ad-chat` 내부에서 **HTTP fetch 금지**. 같은 데이터가 필요하면 `buildEventAnalytics()` 같은 공유 서비스 함수 직호출.
+- Vercel Deployment Protection 이 내부 fetch 도 막아 bypass token 을 요구하게 됨 → 함수 직호출로 우회.
+- 공유 서비스: `src/lib/event-analytics-service.ts` (route 와 AI 도구 공유).
+
+### 필수 환경 변수
+- `GOOGLE_GENERATIVE_AI_API_KEY` — Gemini API 키 (https://aistudio.google.com/app/apikey)
+- 등록 후 **재배포 필수** — Vercel 은 env 변경을 기존 빌드에 자동 반영하지 않음.
+
+### UI — `src/components/ui/AdAiQueryBox.tsx`
+- `useChat` (ai-sdk/react) 기반 스트리밍 채팅
+- `error` state 를 빨간 배너로 UI 에 노출 (디버깅 친화)
+- 상태 바 (ready/streaming/submitted/error) 컬러 코딩
+- 인라인 차트 렌더링 (`tool-chartData` part 감지)
 
 ## 벤치마크 레퍼런스
 기능·UX 방향의 기준은 **Adriel**(adriel.com) — 전체 스펙을 [`docs/adriel-benchmark.md`](docs/adriel-benchmark.md) 에 정리. 위젯 시스템·리포트 모드·자동화 룰·AI 에이전트·100+ 채널 연동이 핵심 참조점.
