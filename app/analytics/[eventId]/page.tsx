@@ -137,9 +137,6 @@ function fmtDuration(seconds: number): string {
 
 // ───── 페이지 ─────
 
-const DEFAULT_VIEW = '기본' as const
-const DISABLED_VIEWS = ['기간 비교', '페이지 비교', '설문 통계']
-
 // 이벤트별 실데이터 기준 기간 — 기본 날짜 범위 힌트
 const EVENT_DEFAULT_DATE_RANGE: Record<string, { startDate: string; endDate: string }> = {
   '1042': { startDate: '2026-03-01', endDate: '2026-03-31' },
@@ -426,21 +423,6 @@ export default function EventAnalyticsPage() {
               endDate={endDate}
               onChange={(s, e) => { setStartDate(s); setEndDate(e) }}
             />
-            <div className="ml-auto flex gap-1">
-              <button className="text-sm px-3 py-1.5 rounded-md bg-primary/10 text-primary font-medium">
-                {DEFAULT_VIEW}
-              </button>
-              {DISABLED_VIEWS.map((v) => (
-                <button
-                  key={v}
-                  disabled
-                  title="Phase 2 예정"
-                  className="text-sm px-3 py-1.5 rounded-md text-muted-foreground/50 cursor-not-allowed"
-                >
-                  {v}
-                </button>
-              ))}
-            </div>
           </div>
 
           <div className="flex flex-wrap gap-2">
