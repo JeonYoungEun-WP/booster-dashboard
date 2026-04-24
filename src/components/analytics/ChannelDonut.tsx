@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 import { CHANNEL_LABEL, type AdChannel } from '@/src/lib/ad-data'
+import { ChannelRadar } from './ChannelRadar'
 
 export interface ChannelDonutRow {
   channel: string                 // 'meta' | 'tiktok' | ...
@@ -15,6 +16,8 @@ export interface ChannelDonutRow {
   cvrReservation: number
   /** 예약 → 계약 전환율 (0~1) */
   cvrContract: number
+  /** 채널 ROAS (0~N, 1 = 본전) */
+  roas: number
 }
 
 interface Props {
@@ -198,7 +201,7 @@ export function ChannelDonut({ rows }: Props) {
         </ul>
       </div>
 
-      {/* 광고비 + 퍼널 3단계 전환율 — 4 블록 */}
+      {/* 광고비 + (Radar | CVR bars) */}
       <div className="space-y-3.5 pt-3.5 border-t border-border flex-1">
         <MetricBars
           title="광고비"
@@ -207,27 +210,43 @@ export function ChannelDonut({ rows }: Props) {
           formatter={fmtKRW}
           max={maxAdSpend}
         />
-        <MetricBars
-          title="리드 전환율"
-          subtitle="클릭 → 리드"
-          rows={leadCvrBars}
-          formatter={fmtPct}
-          max={maxLeadCvr}
-        />
-        <MetricBars
-          title="예약 전환율"
-          subtitle="리드 → 예약"
-          rows={reservationCvrBars}
-          formatter={fmtPct}
-          max={maxReservationCvr}
-        />
-        <MetricBars
-          title="계약 전환율"
-          subtitle="예약 → 계약"
-          rows={contractCvrBars}
-          formatter={fmtPct}
-          max={maxContractCvr}
-        />
+        {/* 채널 2+ → Radar 로 프로파일 비교 · 채널 1 → 기존 3 CVR 바 */}
+        {sortedRows.length >= 2 ? (
+          <ChannelRadar
+            rows={sortedRows.map((r) => ({
+              channel: r.channel,
+              cvrLead: r.cvrLead,
+              cvrReservation: r.cvrReservation,
+              cvrContract: r.cvrContract,
+              roas: r.roas,
+            }))}
+            height={280}
+          />
+        ) : (
+          <>
+            <MetricBars
+              title="리드 전환율"
+              subtitle="클릭 → 리드"
+              rows={leadCvrBars}
+              formatter={fmtPct}
+              max={maxLeadCvr}
+            />
+            <MetricBars
+              title="예약 전환율"
+              subtitle="리드 → 예약"
+              rows={reservationCvrBars}
+              formatter={fmtPct}
+              max={maxReservationCvr}
+            />
+            <MetricBars
+              title="계약 전환율"
+              subtitle="예약 → 계약"
+              rows={contractCvrBars}
+              formatter={fmtPct}
+              max={maxContractCvr}
+            />
+          </>
+        )}
       </div>
     </section>
   )

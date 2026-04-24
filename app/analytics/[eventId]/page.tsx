@@ -271,7 +271,7 @@ export default function EventAnalyticsPage() {
   }, [data])
 
   // 채널 도넛 rows — byChannel + sessionsByChannel 합성 (리드 내림차순)
-  // 전환율 3단계: 클릭→리드 / 리드→예약 / 예약→계약
+  // 전환율 3단계: 클릭→리드 / 리드→예약 / 예약→계약 + ROAS
   const channelDonutRows = useMemo<ChannelDonutRow[]>(() => {
     if (!data) return []
     const safeRate = (num: number, den: number) => (den > 0 ? num / den : 0)
@@ -285,6 +285,7 @@ export default function EventAnalyticsPage() {
         cvrLead:        safeRate(c.leads,        c.clicks),
         cvrReservation: safeRate(c.reservations, c.leads),
         cvrContract:    safeRate(c.contracts,    c.reservations),
+        roas: c.roas,
       }
     }).sort((a, b) => b.leads - a.leads)
   }, [data, sessionsByChannel])
