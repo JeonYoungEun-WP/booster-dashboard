@@ -14,13 +14,16 @@ import type { EventAnalyticsResponse } from './event-analytics-service'
 
 const BRAND_NAME = 'boosterMAX'
 const BRAND_FONT = 'Pretendard, system-ui, sans-serif'
-const COLOR_BRAND = '#8B5CF6'
-const COLOR_BRAND_DARK = '#6D28D9'
+// boosterMAX 팔레트
+const COLOR_BRAND = '#62A4FA'           // main (블루)
+const COLOR_BRAND_DARK = '#3983E2'      // text-main (딥 블루)
+const COLOR_BRAND_SUB = '#70D392'       // sub (그린) — 포지티브
+const COLOR_BRAND_ACCENT = '#25A9B2'    // 그라디언트 악센트 (티얼)
 const COLOR_TEXT_DARK = '#171819'
 const COLOR_TEXT_MUTED = '#868E96'
 const COLOR_BORDER = '#E5E8EB'
 const COLOR_BG_LIGHT = '#F5F6F8'
-const COLOR_SUCCESS = '#10B981'
+const COLOR_SUCCESS = '#70D392'         // 브랜드 그린
 const COLOR_WARN = '#F59E0B'
 
 function fmtKRW(n: number): string {
@@ -78,24 +81,31 @@ function renderCover(data: EventAnalyticsResponse, generatedAt: string): HTMLDiv
   const periodLabel = `${data.period.startDate} ~ ${data.period.endDate}`
 
   const el = createBaseSlide()
-  el.style.background = `linear-gradient(135deg, ${COLOR_BRAND} 0%, ${COLOR_BRAND_DARK} 100%)`
+  // boosterMAX 브랜드 그라디언트 — sub(그린) → main(블루) · 104deg
+  el.style.background = `linear-gradient(104deg, ${COLOR_BRAND_SUB} 20.18%, ${COLOR_BRAND} 96.19%)`
   el.style.color = '#FFFFFF'
   el.style.padding = '80px'
+  el.style.overflow = 'hidden'
   el.innerHTML = `
-    <div style="font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">${BRAND_NAME}</div>
+    <!-- 우측 상단 장식 서클 (브랜드 악센트) -->
+    <div style="position: absolute; top: -80px; right: -60px; width: 280px; height: 280px; border-radius: 50%; background: ${COLOR_BRAND_SUB}; opacity: 0.45;"></div>
+    <div style="position: absolute; top: 40px; right: 140px; width: 120px; height: 120px; border-radius: 50%; background: ${COLOR_BRAND_ACCENT}; opacity: 0.55;"></div>
+    <div style="position: absolute; top: 160px; right: 40px; width: 70px; height: 70px; border-radius: 50%; background: ${COLOR_BRAND_DARK}; opacity: 0.35;"></div>
+
+    <div style="position: relative; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">${BRAND_NAME}</div>
     <div style="position: absolute; left: 80px; top: 380px; right: 80px;">
       <div style="font-size: 72px; font-weight: 800; letter-spacing: -1px; line-height: 1.1;">${escapeHtml(advertiser)}</div>
       <div style="font-size: 36px; font-weight: 500; margin-top: 20px; opacity: 0.95;">랜딩페이지 성과 리포트</div>
     </div>
     <div style="position: absolute; left: 80px; top: 680px; right: 80px; display: flex; gap: 24px; align-items: center;">
-      <div style="background: rgba(255,255,255,0.15); padding: 16px 28px; border-radius: 999px; font-size: 22px; font-weight: 600;">
+      <div style="background: rgba(255,255,255,0.22); padding: 16px 28px; border-radius: 999px; font-size: 22px; font-weight: 600; backdrop-filter: blur(4px);">
         기간 · ${periodLabel}
       </div>
     </div>
-    <div style="position: absolute; left: 80px; bottom: 60px; font-size: 18px; opacity: 0.7;">
+    <div style="position: absolute; left: 80px; bottom: 60px; font-size: 18px; opacity: 0.75;">
       생성일: ${generatedAt.slice(0, 10)}
     </div>
-    <div style="position: absolute; right: 80px; bottom: 60px; font-size: 18px; opacity: 0.7;">
+    <div style="position: absolute; right: 80px; bottom: 60px; font-size: 18px; opacity: 0.75;">
       이벤트 ID: ${data.eventId}
     </div>
   `
@@ -528,9 +538,9 @@ function renderDailyTrend(data: EventAnalyticsResponse, total: number, periodLab
     return { y, label }
   })
 
-  const COLOR_SESSION = '#8B5CF6'
-  const COLOR_LEAD = COLOR_WARN       // #F59E0B
-  const COLOR_RESERVATION = COLOR_SUCCESS // #10B981
+  const COLOR_SESSION = COLOR_BRAND_DARK    // boosterMAX 딥 블루
+  const COLOR_LEAD = COLOR_WARN             // 앰버
+  const COLOR_RESERVATION = COLOR_SUCCESS   // 브랜드 그린
 
   const el = createBaseSlide()
   if (rows.length === 0) {

@@ -90,7 +90,7 @@ export function ReportModeDialog({ open, onClose, data }: Props) {
             <div className="flex items-center gap-2 mb-1">
               <FileText size={20} className="text-primary" />
               <h2 className="text-xl font-bold">리포트 모드</h2>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200">
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 border border-sky-200">
                 boosterMAX
               </span>
             </div>

@@ -11,16 +11,18 @@
 import PptxGenJS from 'pptxgenjs'
 import type { EventAnalyticsResponse } from './event-analytics-service'
 
-// ───── 브랜드 / 컬러 토큰 ─────
+// ───── 브랜드 / 컬러 토큰 (boosterMAX 팔레트) ─────
 const BRAND_NAME = 'boosterMAX'
 const BRAND_FONT = 'Pretendard'
-const COLOR_BRAND = '8B5CF6'          // violet-500
-const COLOR_BRAND_DARK = '6D28D9'     // violet-700
+const COLOR_BRAND = '62A4FA'          // main (블루)
+const COLOR_BRAND_DARK = '3983E2'     // text-main (딥 블루)
+const COLOR_BRAND_SUB = '70D392'      // sub (그린) — 포지티브 · 하이라이트
+const COLOR_BRAND_ACCENT = '25A9B2'   // 강조 · 그라디언트 끝점
 const COLOR_TEXT_DARK = '171819'
 const COLOR_TEXT_MUTED = '868E96'
 const COLOR_BORDER = 'E5E8EB'
 const COLOR_BG_LIGHT = 'F5F6F8'
-const COLOR_SUCCESS = '10B981'
+const COLOR_SUCCESS = '70D392'        // 브랜드 그린 (기존 emerald 대신)
 const COLOR_WARN = 'F59E0B'
 
 function fmtKRW(n: number): string {
@@ -136,10 +138,45 @@ export async function buildReportPptx({
 
   const f = data.funnel
 
-  // ═════════ 슬라이드 1 — 표지 ═════════
+  // ═════════ 슬라이드 1 — 표지 (브랜드 그라디언트) ═════════
   {
     const slide = pptx.addSlide()
-    slide.background = { color: COLOR_BRAND }
+    // 베이스: 브랜드 그린 (그라디언트 시작)
+    slide.background = { color: COLOR_BRAND_SUB }
+
+    // 그라디언트 효과 — 반투명 블루 오버레이 (우측 → 좌측 전개)
+    // 104deg 방향: 대각선 하단-좌 → 상단-우 방향
+    // pptxgenjs 네이티브 gradient 미지원 → 단계적 반투명 사각형으로 approx
+    for (let i = 0; i < 8; i++) {
+      const t = i / 7
+      const transparency = Math.round(20 + t * 70) // 20% → 90% 투명도 (좌측일수록 진함)
+      slide.addShape('rect', {
+        x: SLIDE_W * (0.15 + t * 0.85),
+        y: 0,
+        w: SLIDE_W * 0.5,
+        h: SLIDE_H,
+        fill: { color: COLOR_BRAND, transparency },
+        line: { color: COLOR_BRAND, width: 0 },
+      })
+    }
+    // 상단 블루 강조 (딥 블루 텍스트 톤 매치)
+    slide.addShape('rect', {
+      x: SLIDE_W * 0.55, y: 0, w: SLIDE_W * 0.45, h: SLIDE_H,
+      fill: { color: COLOR_BRAND_DARK, transparency: 70 },
+      line: { color: COLOR_BRAND_DARK, width: 0 },
+    })
+
+    // 장식 서클 (우측 상단) — 브랜드 스타일 악센트
+    slide.addShape('ellipse', {
+      x: SLIDE_W - 2.2, y: -0.5, w: 2.5, h: 2.5,
+      fill: { color: COLOR_BRAND_SUB, transparency: 60 },
+      line: { color: 'FFFFFF', width: 0 },
+    })
+    slide.addShape('ellipse', {
+      x: SLIDE_W - 1.3, y: 0.4, w: 1.3, h: 1.3,
+      fill: { color: COLOR_BRAND_ACCENT, transparency: 50 },
+      line: { color: 'FFFFFF', width: 0 },
+    })
 
     // 브랜드 마크 placeholder (로고 나중 삽입)
     slide.addText(BRAND_NAME, {
