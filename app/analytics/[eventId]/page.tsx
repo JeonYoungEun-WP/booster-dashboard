@@ -463,14 +463,40 @@ export default function EventAnalyticsPage() {
 
             <KpiGrid items={kpi} />
 
-            {/* 추이 차트 + 채널 도넛 (2컬럼, lg 미만에서는 1열) */}
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5">
-              <TrendChart
-                data={trendData}
-                actions={<TrendGranularityToggle value={granularity} onChange={setGranularity} />}
+            {/* 일자별 추이 — 풀 위스 */}
+            <TrendChart
+              data={trendData}
+              actions={<TrendGranularityToggle value={granularity} onChange={setGranularity} />}
+            />
+
+            {/* 채널 비중 (좌) + 채널별 퍼널 (우) — 한 행 */}
+            {channelFunnelTables.length > 0 ? (
+              <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-5">
+                <ChannelDonut rows={channelDonutRows} />
+                <div className={`grid grid-cols-1 gap-5 ${
+                  channelFunnelTables.length >= 2 ? 'xl:grid-cols-2' : ''
+                }`}>
+                  {channelFunnelTables.map((t) => (
+                    <FunnelMetricsTable
+                      key={t.channel}
+                      channel={t.channel as AdChannel}
+                      title="채널별 퍼널"
+                      rows={t.rows}
+                      adSpend={t.adSpend}
+                      revenue={t.revenue}
+                      roas={t.roas}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <FunnelMetricsTable
+                rows={funnelMetricRows}
+                adSpend={data.funnel.adSpend}
+                revenue={data.funnel.reservationRevenue}
+                roas={data.funnel.trueROAS_estimated}
               />
-              <ChannelDonut rows={channelDonutRows} />
-            </div>
+            )}
 
             <TrackingCodeTable rows={data.byTrackingCode} />
 
@@ -487,31 +513,6 @@ export default function EventAnalyticsPage() {
               />
               <ClarityCard data={data.clarity} />
             </div>
-
-            {channelFunnelTables.length > 0 ? (
-              <div className={`grid grid-cols-1 gap-5 ${
-                channelFunnelTables.length >= 2 ? 'xl:grid-cols-2' : ''
-              }`}>
-                {channelFunnelTables.map((t) => (
-                  <FunnelMetricsTable
-                    key={t.channel}
-                    channel={t.channel as AdChannel}
-                    title="채널별 퍼널"
-                    rows={t.rows}
-                    adSpend={t.adSpend}
-                    revenue={t.revenue}
-                    roas={t.roas}
-                  />
-                ))}
-              </div>
-            ) : (
-              <FunnelMetricsTable
-                rows={funnelMetricRows}
-                adSpend={data.funnel.adSpend}
-                revenue={data.funnel.reservationRevenue}
-                roas={data.funnel.trueROAS_estimated}
-              />
-            )}
           </>
         )}
       </div>
