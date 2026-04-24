@@ -21,7 +21,6 @@ export interface ChannelFunnelGroup {
 interface Props {
   groups: ChannelFunnelGroup[]
   title?: string
-  subtitle?: string
 }
 
 const ICONS: Record<string, LucideIcon> = {
@@ -55,7 +54,6 @@ function fmtPct(n: number): string {
 export function ChannelFunnelCompareTable({
   groups,
   title = '채널별 퍼널',
-  subtitle = '단계별 수 · 전환율 · 전환 단가',
 }: Props) {
   if (groups.length === 0) return null
 
@@ -64,9 +62,8 @@ export function ChannelFunnelCompareTable({
 
   return (
     <section className="rounded-xl border border-border bg-card p-5">
-      <div className="flex items-baseline justify-between mb-4 gap-2 flex-wrap">
+      <div className="flex items-baseline mb-4">
         <h2 className="text-base font-semibold">{title}</h2>
-        <span className="text-sm text-muted-foreground">{subtitle}</span>
       </div>
 
       <div className="overflow-x-auto">
