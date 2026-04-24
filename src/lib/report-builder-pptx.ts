@@ -232,18 +232,18 @@ export async function buildReportPptx({
   // ═════════ 슬라이드 3 — 퍼널 5 카드 (대시보드 FunnelFlow 스타일) ═════════
   {
     const slide = pptx.addSlide()
-    addTitle(slide, '광고비 → 계약 퍼널', '단계별 수 · 전환율 · 획득당 비용')
+    addTitle(slide, '풀퍼널 분석', '단계별 수 · 전환율 · 획득당 비용')
 
     const is3550 = data.eventId === '3550'
     const reserveLabel = is3550 ? '예약' : '방문예약'
     const contractLabel = is3550 ? '계약' : '결제'
 
     const stages = [
-      { label: '노출', value: f.impressions, prevLabel: null, cvr: null as number | null, cpu: null as number | null, cpuLabel: '', source: 'admin' },
-      { label: '클릭', value: f.clicks, prevLabel: '노출', cvr: f.ctr / 100, cpu: f.cpc, cpuLabel: 'CPC · 클릭당', source: 'admin' },
-      { label: '리드', value: f.leads, prevLabel: '클릭', cvr: f.clicks > 0 ? f.leads / f.clicks : 0, cpu: f.cpa_lead, cpuLabel: 'CPA · 리드 획득당', source: 'admin' },
-      { label: reserveLabel, value: f.visitReservations, prevLabel: '리드', cvr: f.cvr_lead_to_visitReservation, cpu: f.cpa_visitReservation, cpuLabel: `${reserveLabel}당 단가`, source: 'dummy' },
-      { label: contractLabel, value: f.reservations, prevLabel: reserveLabel, cvr: f.cvr_visitReservation_to_payment, cpu: f.cpa_reservation, cpuLabel: `${contractLabel}당 단가`, source: 'dummy' },
+      { label: '노출', value: f.impressions, prevLabel: null, cvr: null as number | null, cpu: null as number | null, cpuLabel: '' },
+      { label: '클릭', value: f.clicks, prevLabel: '노출', cvr: f.ctr / 100, cpu: f.cpc, cpuLabel: 'CPC · 클릭당' },
+      { label: '리드', value: f.leads, prevLabel: '클릭', cvr: f.clicks > 0 ? f.leads / f.clicks : 0, cpu: f.cpa_lead, cpuLabel: 'CPA · 리드 획득당' },
+      { label: reserveLabel, value: f.visitReservations, prevLabel: '리드', cvr: f.cvr_lead_to_visitReservation, cpu: f.cpa_visitReservation, cpuLabel: `${reserveLabel}당 단가` },
+      { label: contractLabel, value: f.reservations, prevLabel: reserveLabel, cvr: f.cvr_visitReservation_to_payment, cpu: f.cpa_reservation, cpuLabel: `${contractLabel}당 단가` },
     ]
 
     // 5 카드 그리드 상단부
@@ -262,17 +262,8 @@ export async function buildReportPptx({
       })
       // 라벨
       slide.addText(s.label, {
-        x: x + 0.15, y: cardTop + 0.12, w: cardW - 1.2, h: 0.3,
+        x: x + 0.15, y: cardTop + 0.12, w: cardW - 0.3, h: 0.3,
         fontFace: BRAND_FONT, fontSize: 12, color: COLOR_TEXT_MUTED,
-      })
-      // 출처 배지
-      const badgeColor = s.source === 'admin' ? '047857' : 'B45309'
-      const badgeBg = s.source === 'admin' ? 'ECFDF5' : 'FFFBEB'
-      slide.addText(s.source === 'admin' ? '어드민' : '더미', {
-        x: x + cardW - 1.05, y: cardTop + 0.12, w: 0.9, h: 0.3,
-        align: 'center',
-        fontFace: BRAND_FONT, fontSize: 9, bold: true, color: badgeColor,
-        fill: { color: badgeBg },
       })
       // 값
       slide.addText(fmtNumber(s.value), {
@@ -347,47 +338,271 @@ export async function buildReportPptx({
     addFooter(slide, 3, totalPagesPlaceholder, periodLabel)
   }
 
-  // ═════════ 슬라이드 4 — 채널별 성과 표 ═════════
+  // ═════════ 슬라이드 4 — 채널별 성과 (대시보드 스타일: 도넛 + 퍼널 비교 테이블) ═════════
   {
     const slide = pptx.addSlide()
     addTitle(slide, '채널별 성과', `${data.byChannel.length}개 채널 · 리드 내림차순`)
 
     const channelRows = [...data.byChannel].sort((a, b) => b.leads - a.leads)
+    const totalLeads = channelRows.reduce((s, c) => s + c.leads, 0)
+    const maxSpend = Math.max(1, ...channelRows.map((c) => c.adSpend))
+    const sumAdSpend = channelRows.reduce((s, c) => s + c.adSpend, 0)
+    const sumRevenue = channelRows.reduce((s, c) => s + c.revenue, 0)
+    const totalROAS = sumAdSpend > 0 ? sumRevenue / sumAdSpend : 0
 
-    const tableData: PptxGenJS.TableRow[] = [
-      [
-        { text: '채널', options: { bold: true, fill: { color: COLOR_BG_LIGHT }, align: 'left' } },
-        { text: '광고비', options: { bold: true, fill: { color: COLOR_BG_LIGHT }, align: 'right' } },
-        { text: '클릭', options: { bold: true, fill: { color: COLOR_BG_LIGHT }, align: 'right' } },
-        { text: '리드', options: { bold: true, fill: { color: COLOR_BG_LIGHT }, align: 'right' } },
-        { text: '예약', options: { bold: true, fill: { color: COLOR_BG_LIGHT }, align: 'right' } },
-        { text: '계약', options: { bold: true, fill: { color: COLOR_BG_LIGHT }, align: 'right' } },
-        { text: 'CPA(리드)', options: { bold: true, fill: { color: COLOR_BG_LIGHT }, align: 'right' } },
-        { text: 'ROAS', options: { bold: true, fill: { color: COLOR_BG_LIGHT }, align: 'right' } },
-      ],
-      ...channelRows.map<PptxGenJS.TableRow>((c) => [
-        { text: CHANNEL_KO[c.channel] ?? c.channel, options: { align: 'left' } },
-        { text: fmtKRW(c.adSpend), options: { align: 'right' } },
-        { text: fmtNumber(c.clicks), options: { align: 'right' } },
-        { text: fmtNumber(c.leads), options: { align: 'right' } },
-        { text: fmtNumber(c.reservations), options: { align: 'right' } },
-        { text: fmtNumber(c.contracts), options: { align: 'right' } },
-        { text: c.cpa_lead > 0 ? fmtKRW(c.cpa_lead) : '—', options: { align: 'right' } },
-        {
-          text: fmtPct(c.roas),
-          options: {
-            align: 'right',
-            color: c.roas >= 1 ? COLOR_SUCCESS : COLOR_WARN,
-            bold: true,
-          },
-        },
+    const is3550 = data.eventId === '3550'
+    const reserveLabel = is3550 ? '예약' : '방문예약'
+    const contractLabel = is3550 ? '계약' : '결제'
+
+    const CHANNEL_COLORS: Record<string, string> = {
+      meta: '1877F2',
+      tiktok: '000000',
+      google: '4285F4',
+      naver: '03C75A',
+      kakao: 'FEE500',
+      karrot: 'FF7E1D',
+    }
+
+    // ───── 좌측 패널: 채널 비중 (도넛 + 광고비 바) ─────
+    const leftX = 0.5
+    const leftY = 1.7
+    const leftW = 4.3
+    const leftH = 5.1
+    slide.addShape('roundRect', {
+      x: leftX, y: leftY, w: leftW, h: leftH,
+      fill: { color: 'FFFFFF' },
+      line: { color: COLOR_BORDER, width: 1 },
+      rectRadius: 0.1,
+    })
+    slide.addText('채널 비중', {
+      x: leftX + 0.2, y: leftY + 0.15, w: leftW - 0.4, h: 0.3,
+      fontFace: BRAND_FONT, fontSize: 14, bold: true, color: COLOR_TEXT_DARK,
+    })
+    slide.addText('리드 기준', {
+      x: leftX + 0.2, y: leftY + 0.15, w: leftW - 0.4, h: 0.3,
+      fontFace: BRAND_FONT, fontSize: 10, color: COLOR_TEXT_MUTED,
+      align: 'right',
+    })
+
+    // 도넛 (pptxgenjs native doughnut chart)
+    const donutData = [{
+      name: '리드 비중',
+      labels: channelRows.map((c) => CHANNEL_KO[c.channel] ?? c.channel),
+      values: channelRows.map((c) => c.leads),
+    }]
+    slide.addChart(pptx.ChartType.doughnut, donutData, {
+      x: leftX + 0.2, y: leftY + 0.55, w: 1.7, h: 1.7,
+      chartColors: channelRows.map((c) => CHANNEL_COLORS[c.channel] ?? COLOR_BRAND),
+      showLegend: false,
+      showTitle: false,
+      showValue: false,
+      dataBorder: { pt: 1.5, color: 'FFFFFF' },
+      holeSize: 55,
+    })
+    // 도넛 중앙 총 리드
+    slide.addText('총 리드', {
+      x: leftX + 0.2, y: leftY + 1.25, w: 1.7, h: 0.25,
+      align: 'center', fontFace: BRAND_FONT, fontSize: 9, color: COLOR_TEXT_MUTED,
+    })
+    slide.addText(fmtNumber(totalLeads), {
+      x: leftX + 0.2, y: leftY + 1.45, w: 1.7, h: 0.35,
+      align: 'center', fontFace: BRAND_FONT, fontSize: 16, bold: true, color: COLOR_TEXT_DARK,
+    })
+
+    // 도넛 우측 범례 (컬러점 + 채널명 + %)
+    const legendX = leftX + 2.05
+    const legendTop = leftY + 0.55
+    channelRows.forEach((c, i) => {
+      const rowY = legendTop + i * 0.3
+      const share = totalLeads > 0 ? (c.leads / totalLeads) * 100 : 0
+      slide.addShape('ellipse', {
+        x: legendX, y: rowY + 0.08, w: 0.12, h: 0.12,
+        fill: { color: CHANNEL_COLORS[c.channel] ?? COLOR_BRAND },
+        line: { color: CHANNEL_COLORS[c.channel] ?? COLOR_BRAND, width: 0 },
+      })
+      slide.addText(CHANNEL_KO[c.channel] ?? c.channel, {
+        x: legendX + 0.2, y: rowY, w: 1.4, h: 0.28,
+        fontFace: BRAND_FONT, fontSize: 10, bold: true, color: COLOR_TEXT_DARK,
+      })
+      slide.addText(`${share.toFixed(1)}%`, {
+        x: legendX + 1.45, y: rowY, w: 0.6, h: 0.28,
+        align: 'right',
+        fontFace: BRAND_FONT, fontSize: 10, color: COLOR_TEXT_MUTED,
+      })
+    })
+
+    // 구분선
+    slide.addShape('line', {
+      x: leftX + 0.2, y: leftY + 2.5, w: leftW - 0.4, h: 0,
+      line: { color: COLOR_BORDER, width: 0.75 },
+    })
+
+    // 광고비 바 (채널별)
+    slide.addText('광고비', {
+      x: leftX + 0.2, y: leftY + 2.65, w: leftW - 0.4, h: 0.28,
+      fontFace: BRAND_FONT, fontSize: 12, bold: true, color: COLOR_TEXT_DARK,
+    })
+    slide.addText('채널별 지출', {
+      x: leftX + 0.2, y: leftY + 2.65, w: leftW - 0.4, h: 0.28,
+      align: 'right',
+      fontFace: BRAND_FONT, fontSize: 9, color: COLOR_TEXT_MUTED,
+    })
+    const barTop = leftY + 3.0
+    const barSlotH = Math.min(0.28, (leftH - 3.15) / Math.max(1, channelRows.length))
+    channelRows.forEach((c, i) => {
+      const rowY = barTop + i * barSlotH
+      const pct = Math.max(0.05, c.adSpend / maxSpend)
+      // 채널 라벨
+      slide.addText(CHANNEL_KO[c.channel] ?? c.channel, {
+        x: leftX + 0.2, y: rowY + 0.02, w: 1.1, h: barSlotH - 0.05,
+        fontFace: BRAND_FONT, fontSize: 9, bold: true, color: COLOR_TEXT_DARK,
+      })
+      // 바 배경
+      const trackX = leftX + 1.35
+      const trackW = 2.0
+      const trackY = rowY + 0.07
+      const trackH = 0.14
+      slide.addShape('roundRect', {
+        x: trackX, y: trackY, w: trackW, h: trackH,
+        fill: { color: 'F1F5F9' },
+        line: { color: 'F1F5F9', width: 0 },
+        rectRadius: 0.04,
+      })
+      // 바 실선
+      slide.addShape('roundRect', {
+        x: trackX, y: trackY, w: trackW * pct, h: trackH,
+        fill: { color: CHANNEL_COLORS[c.channel] ?? COLOR_BRAND },
+        line: { color: CHANNEL_COLORS[c.channel] ?? COLOR_BRAND, width: 0 },
+        rectRadius: 0.04,
+      })
+      // 금액
+      slide.addText(fmtKRW(c.adSpend), {
+        x: leftX + 3.4, y: rowY + 0.02, w: 0.85, h: barSlotH - 0.05,
+        align: 'right',
+        fontFace: BRAND_FONT, fontSize: 9, bold: true, color: COLOR_TEXT_DARK,
+      })
+    })
+
+    // ───── 우측 패널: 채널 퍼널 비교 테이블 ─────
+    const rightX = 5.0
+    const rightY = 1.7
+    const rightW = SLIDE_W - 5.5
+    const rightH = 5.1
+    slide.addShape('roundRect', {
+      x: rightX, y: rightY, w: rightW, h: rightH,
+      fill: { color: 'FFFFFF' },
+      line: { color: COLOR_BORDER, width: 1 },
+      rectRadius: 0.1,
+    })
+    slide.addText('채널별 퍼널', {
+      x: rightX + 0.2, y: rightY + 0.15, w: rightW - 0.4, h: 0.3,
+      fontFace: BRAND_FONT, fontSize: 14, bold: true, color: COLOR_TEXT_DARK,
+    })
+
+    // 테이블 구성 — 각 채널당 2컬럼(수·전환/단가) + 단계 컬럼 1개
+    const stageDefs = [
+      { label: '노출', getValue: (c: typeof channelRows[0]) => ({ v: c.impressions, cvr: null as number | null, cpa: null as number | null }) },
+      { label: '클릭', getValue: (c: typeof channelRows[0]) => ({ v: c.clicks, cvr: c.impressions > 0 ? c.clicks / c.impressions : 0, cpa: c.clicks > 0 ? c.adSpend / c.clicks : 0 }) },
+      { label: '리드', getValue: (c: typeof channelRows[0]) => ({ v: c.leads, cvr: c.clicks > 0 ? c.leads / c.clicks : 0, cpa: c.cpa_lead }) },
+      { label: reserveLabel, getValue: (c: typeof channelRows[0]) => ({ v: c.reservations, cvr: c.leads > 0 ? c.reservations / c.leads : 0, cpa: c.cpa_reservation }) },
+      { label: contractLabel, getValue: (c: typeof channelRows[0]) => ({ v: c.contracts, cvr: c.reservations > 0 ? c.contracts / c.reservations : 0, cpa: c.cpa_contract }) },
+    ]
+
+    // 헤더 1: 단계(2행 스팬) + 채널명(2컬럼 colspan)
+    const headerRow1: PptxGenJS.TableRow = [
+      { text: '단계', options: { bold: true, fill: { color: COLOR_BG_LIGHT }, align: 'left', rowspan: 2, valign: 'bottom' } },
+      ...channelRows.map<PptxGenJS.TableCell>((c) => (
+        { text: CHANNEL_KO[c.channel] ?? c.channel, options: { bold: true, fill: { color: COLOR_BG_LIGHT }, align: 'center', colspan: 2, color: CHANNEL_COLORS[c.channel] ?? COLOR_BRAND } }
+      )),
+    ]
+    // 헤더 2: 수 / 전환·단가 (첫 컬럼은 rowspan 때문에 생략)
+    const headerRow2: PptxGenJS.TableRow = [
+      ...channelRows.flatMap<PptxGenJS.TableCell>(() => [
+        { text: '수', options: { fill: { color: COLOR_BG_LIGHT }, fontSize: 9, align: 'right', color: COLOR_TEXT_MUTED } },
+        { text: '전환 / 단가', options: { fill: { color: COLOR_BG_LIGHT }, fontSize: 9, align: 'right', color: COLOR_TEXT_MUTED } },
       ]),
     ]
 
-    slide.addTable(tableData, {
-      x: 0.5, y: 1.8, w: SLIDE_W - 1, colW: [2.0, 1.7, 1.3, 1.3, 1.3, 1.3, 1.7, 1.7],
-      fontFace: BRAND_FONT, fontSize: 12,
+    // 본문 행
+    const bodyRows: PptxGenJS.TableRow[] = stageDefs.map((s) => {
+      const row: PptxGenJS.TableRow = [
+        { text: s.label, options: { bold: true, align: 'left' } },
+      ]
+      channelRows.forEach((c) => {
+        const { v, cvr, cpa } = s.getValue(c)
+        row.push({ text: fmtNumber(v), options: { align: 'right', bold: true } })
+        if (cvr !== null) {
+          const cpaText = cpa && cpa > 0 ? fmtKRW(cpa) : '—'
+          row.push({
+            text: [
+              { text: fmtPct(cvr), options: { fontSize: 10, bold: true } },
+              { text: `\n${cpaText}`, options: { fontSize: 8, color: COLOR_TEXT_MUTED } },
+            ],
+            options: { align: 'right' },
+          })
+        } else {
+          row.push({ text: '—', options: { align: 'right', color: COLOR_TEXT_MUTED } })
+        }
+      })
+      return row
+    })
+
+    // 합계 행 (광고비 / 매출 / ROAS) — 각 채널당 colspan:2
+    const footerRows: PptxGenJS.TableRow[] = [
+      [
+        { text: '광고비', options: { bold: true, align: 'left', color: COLOR_TEXT_MUTED, fontSize: 10 } },
+        ...channelRows.map<PptxGenJS.TableCell>((c) => (
+          { text: fmtKRW(c.adSpend), options: { bold: true, align: 'right', colspan: 2 } }
+        )),
+      ],
+      [
+        { text: '매출', options: { bold: true, align: 'left', color: COLOR_TEXT_MUTED, fontSize: 10 } },
+        ...channelRows.map<PptxGenJS.TableCell>((c) => (
+          { text: fmtKRW(c.revenue), options: { bold: true, align: 'right', colspan: 2 } }
+        )),
+      ],
+      [
+        { text: 'ROAS', options: { bold: true, align: 'left', color: COLOR_TEXT_MUTED, fontSize: 10 } },
+        ...channelRows.map<PptxGenJS.TableCell>((c) => (
+          { text: fmtPct(c.roas), options: { bold: true, align: 'right', colspan: 2, color: c.roas >= 1 ? COLOR_SUCCESS : COLOR_WARN } }
+        )),
+      ],
+    ]
+
+    // 컬럼 폭 — 첫 컬럼 넓게 + 각 채널 2컬럼
+    const stageColW = 0.9
+    const valColW = (rightW - 0.4 - stageColW) / (channelRows.length * 2)
+    const colW = [stageColW, ...channelRows.flatMap(() => [valColW, valColW])]
+
+    slide.addTable([headerRow1, headerRow2, ...bodyRows, ...footerRows], {
+      x: rightX + 0.2, y: rightY + 0.55, w: rightW - 0.4, colW,
+      fontFace: BRAND_FONT, fontSize: 11,
       border: { type: 'solid', color: COLOR_BORDER, pt: 0.5 },
+      rowH: 0.35,
+    })
+
+    // 합계 요약 (하단)
+    const summaryY = rightY + rightH - 0.45
+    slide.addShape('line', {
+      x: rightX + 0.2, y: summaryY - 0.05, w: rightW - 0.4, h: 0,
+      line: { color: COLOR_BORDER, width: 0.5 },
+    })
+    slide.addText(`합계 광고비 ${fmtKRW(sumAdSpend)}`, {
+      x: rightX + 0.2, y: summaryY, w: (rightW - 0.4) / 3, h: 0.3,
+      fontFace: BRAND_FONT, fontSize: 10, color: COLOR_TEXT_DARK,
+    })
+    slide.addText(`합계 매출 ${fmtKRW(sumRevenue)}`, {
+      x: rightX + 0.2 + (rightW - 0.4) / 3, y: summaryY, w: (rightW - 0.4) / 3, h: 0.3,
+      align: 'center',
+      fontFace: BRAND_FONT, fontSize: 10, color: COLOR_TEXT_DARK,
+    })
+    slide.addText([
+      { text: '전체 ROAS ', options: { color: COLOR_TEXT_DARK } },
+      { text: fmtPct(totalROAS), options: { bold: true, color: totalROAS >= 1 ? COLOR_SUCCESS : COLOR_WARN } },
+    ], {
+      x: rightX + 0.2 + ((rightW - 0.4) * 2) / 3, y: summaryY, w: (rightW - 0.4) / 3, h: 0.3,
+      align: 'right',
+      fontFace: BRAND_FONT, fontSize: 10,
     })
 
     addFooter(slide, 4, totalPagesPlaceholder, periodLabel)
@@ -456,20 +671,49 @@ export async function buildReportPptx({
       const sessionsMap = new Map(ga4Daily.map((d) => [d.date, d.sessions]))
       const sessionsVals = byDate.map((d) => sessionsMap.get(d.date) ?? 0)
 
-      slide.addChart(pptx.ChartType.bar, [
-        { name: '리드', labels, values: leadsVals },
-        { name: '예약', labels, values: reservationsVals },
-        { name: '세션', labels, values: sessionsVals },
-      ], {
+      // Combo: 리드·예약은 bar, 세션은 line
+      const comboTypes: PptxGenJS.IChartMulti[] = [
+        {
+          type: pptx.ChartType.bar,
+          data: [
+            { name: '리드', labels, values: leadsVals },
+            { name: '예약', labels, values: reservationsVals },
+          ],
+          options: {
+            barDir: 'col',
+            barGrouping: 'clustered',
+            chartColors: [COLOR_WARN, COLOR_SUCCESS],
+          },
+        },
+        {
+          type: pptx.ChartType.line,
+          data: [
+            { name: '세션', labels, values: sessionsVals },
+          ],
+          options: {
+            chartColors: [COLOR_BRAND],
+            secondaryValAxis: true,
+            secondaryCatAxis: true,
+          },
+        },
+      ]
+      // NOTE: pptxgenjs combo chart API — 2-arg form. 3-arg (with `[]` middle) causes plotArea.fill error.
+      // TS declaration is 3-arg only → cast the slide to `any` just for this call.
+      ;(slide as unknown as { addChart: (t: PptxGenJS.IChartMulti[], opts: PptxGenJS.IChartOpts) => void }).addChart(comboTypes, {
         x: 0.5, y: 1.8, w: SLIDE_W - 1, h: 5,
-        barDir: 'col',
-        barGrouping: 'clustered',
-        chartColors: [COLOR_WARN, COLOR_SUCCESS, COLOR_BRAND],
         showLegend: true,
         legendPos: 'b',
         catAxisLabelFontSize: 10,
         valAxisLabelFontSize: 10,
         dataLabelFontSize: 8,
+        valAxes: [
+          { showValAxisTitle: true, valAxisTitle: '리드·예약' },
+          { showValAxisTitle: true, valAxisTitle: '세션', valGridLine: { style: 'none' } },
+        ],
+        catAxes: [
+          { catAxisTitle: '' },
+          { catAxisHidden: true },
+        ],
       })
     } else {
       slide.addText('일자별 데이터 없음', {

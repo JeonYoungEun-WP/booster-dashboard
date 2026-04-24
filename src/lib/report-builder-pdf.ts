@@ -165,23 +165,16 @@ function renderFunnel(data: EventAnalyticsResponse, total: number, periodLabel: 
 
   // 5단계 카드 (대시보드 FunnelFlow 와 동일 구조)
   const stages = [
-    { label: '노출', value: f.impressions, prevLabel: null, cvr: null as number | null, cpu: null as number | null, cpuLabel: '', source: 'admin' },
-    { label: '클릭', value: f.clicks, prevLabel: '노출', cvr: f.ctr / 100, cpu: f.cpc, cpuLabel: 'CPC · 클릭당 광고비', source: 'admin' },
-    { label: '리드', value: f.leads, prevLabel: '클릭', cvr: f.leads / Math.max(1, f.clicks), cpu: f.cpa_lead, cpuLabel: 'CPA · 리드 획득당', source: 'admin' },
-    { label: reserveLabel, value: f.visitReservations, prevLabel: '리드', cvr: f.cvr_lead_to_visitReservation, cpu: f.cpa_visitReservation, cpuLabel: `${reserveLabel}당 단가`, source: 'dummy' },
-    { label: contractLabel, value: f.reservations, prevLabel: reserveLabel, cvr: f.cvr_visitReservation_to_payment, cpu: f.cpa_reservation, cpuLabel: `${contractLabel}당 단가`, source: 'dummy' },
+    { label: '노출', value: f.impressions, prevLabel: null, cvr: null as number | null, cpu: null as number | null, cpuLabel: '' },
+    { label: '클릭', value: f.clicks, prevLabel: '노출', cvr: f.ctr / 100, cpu: f.cpc, cpuLabel: 'CPC · 클릭당 광고비' },
+    { label: '리드', value: f.leads, prevLabel: '클릭', cvr: f.leads / Math.max(1, f.clicks), cpu: f.cpa_lead, cpuLabel: 'CPA · 리드 획득당' },
+    { label: reserveLabel, value: f.visitReservations, prevLabel: '리드', cvr: f.cvr_lead_to_visitReservation, cpu: f.cpa_visitReservation, cpuLabel: `${reserveLabel}당 단가` },
+    { label: contractLabel, value: f.reservations, prevLabel: reserveLabel, cvr: f.cvr_visitReservation_to_payment, cpu: f.cpa_reservation, cpuLabel: `${contractLabel}당 단가` },
   ]
-
-  const badgeStyle = (src: string) => src === 'admin'
-    ? `background: #ECFDF5; color: #047857; border: 1px solid #A7F3D0;`
-    : src === 'ga'
-      ? `background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE;`
-      : `background: #FFFBEB; color: #B45309; border: 1px solid #FDE68A;`
-  const badgeLabel = (src: string) => src === 'admin' ? '어드민' : src === 'ga' ? 'GA' : '더미'
 
   const el = createBaseSlide()
   el.innerHTML = `
-    ${slideHeader('광고비 → 계약 퍼널', '단계별 수 · 전환율 · 획득당 비용')}
+    ${slideHeader('풀퍼널 분석', '단계별 수 · 전환율 · 획득당 비용')}
     <div style="padding: 10px 60px;">
       <!-- 5 카드 -->
       <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px;">
@@ -191,7 +184,6 @@ function renderFunnel(data: EventAnalyticsResponse, total: number, periodLabel: 
             <div style="border: 2px solid ${COLOR_BORDER}; border-radius: 14px; padding: 22px 18px; background: #FFFFFF;">
               <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
                 <div style="font-size: 18px; color: ${COLOR_TEXT_MUTED};">${escapeHtml(s.label)}</div>
-                <span style="font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; ${badgeStyle(s.source)}">${badgeLabel(s.source)}</span>
               </div>
               <div style="font-size: 52px; font-weight: 800; color: ${COLOR_TEXT_DARK}; margin-top: 10px; letter-spacing: -1px; line-height: 1;">${fmtNumber(s.value)}</div>
               ${s.cvr !== null
@@ -479,38 +471,151 @@ function renderTrackingCodeTable(data: EventAnalyticsResponse, total: number, pe
 
 function renderDailyTrend(data: EventAnalyticsResponse, total: number, periodLabel: string): HTMLDivElement {
   const leadsSection = data.leads as { byDate?: Array<{ date: string; leads: number; reservations: number }> } | null
+  const ga4Section = data.ga4 as { daily?: Array<{ date: string; sessions: number }> } | null
+
   const byDate = leadsSection?.byDate ?? []
-  const maxLeads = Math.max(1, ...byDate.map((d) => d.leads))
+  const ga4Daily = ga4Section?.daily ?? []
+  const ga4Map = new Map(ga4Daily.map((d) => [d.date, d.sessions]))
+
+  // 날짜 기준으로 정렬·정합 — leads·reservations 있으면 그 날짜를 기준, 없으면 ga4 날짜
+  const allDates = (byDate.length > 0 ? byDate.map((d) => d.date) : ga4Daily.map((d) => d.date))
+  const rows = allDates.map((date) => {
+    const ld = byDate.find((x) => x.date === date)
+    return {
+      date,
+      leads: ld?.leads ?? 0,
+      reservations: ld?.reservations ?? 0,
+      sessions: ga4Map.get(date) ?? 0,
+    }
+  })
+
+  const maxSession = Math.max(1, ...rows.map((r) => r.sessions))
+  const maxBar = Math.max(1, ...rows.map((r) => Math.max(r.leads, r.reservations)))
+
+  // SVG 캔버스 (PDF 용 슬라이드 비율 1600x1132 기준 차트 영역 조정)
+  const svgW = 1440
+  const svgH = 620
+  const padL = 70
+  const padR = 70
+  const padT = 40
+  const padB = 70
+  const cw = svgW - padL - padR
+  const ch = svgH - padT - padB
+
+  const n = rows.length
+  const colW = n > 0 ? cw / n : 0
+  const barW = Math.max(3, colW * 0.32)
+  const gap = 2
+
+  // 세션 라인 좌표 (좌축 maxSession 기준)
+  const linePoints = rows.map((r, i) => {
+    const x = padL + colW * (i + 0.5)
+    const y = padT + ch - (r.sessions / maxSession) * ch
+    return `${x.toFixed(1)},${y.toFixed(1)}`
+  }).join(' ')
+
+  // 가이드라인 (좌 Y축 — 세션 기준, 5분할)
+  const sessionGrid = [0, 0.25, 0.5, 0.75, 1.0].map((ratio) => {
+    const y = padT + ch - ratio * ch
+    const label = Math.round(maxSession * ratio).toLocaleString('ko-KR')
+    return { y, label }
+  })
+
+  // 우 Y축 — 리드·예약 기준
+  const barGrid = [0, 0.5, 1.0].map((ratio) => {
+    const y = padT + ch - ratio * ch
+    const label = Math.round(maxBar * ratio).toLocaleString('ko-KR')
+    return { y, label }
+  })
+
+  const COLOR_SESSION = '#8B5CF6'
+  const COLOR_LEAD = COLOR_WARN       // #F59E0B
+  const COLOR_RESERVATION = COLOR_SUCCESS // #10B981
 
   const el = createBaseSlide()
+  if (rows.length === 0) {
+    el.innerHTML = `
+      ${slideHeader('일자별 추이', '세션·리드·예약 일별 분포')}
+      <div style="padding: 80px; text-align: center; color: ${COLOR_TEXT_MUTED}; font-size: 20px;">
+        일자별 데이터 없음
+      </div>
+      ${slideFooter(6, total, periodLabel)}
+    `
+    return el
+  }
+
   el.innerHTML = `
-    ${slideHeader('일자별 추이', '리드·예약 분포')}
-    <div style="padding: 20px 80px;">
-      ${byDate.length === 0 ? `
-        <div style="text-align: center; padding: 80px 0; color: ${COLOR_TEXT_MUTED}; font-size: 20px;">
-          일자별 데이터 없음
+    ${slideHeader('일자별 추이', '세션(선) · 리드·예약(막대)')}
+    <div style="padding: 10px 80px;">
+      <svg width="100%" viewBox="0 0 ${svgW} ${svgH}" xmlns="http://www.w3.org/2000/svg" style="display: block;">
+        <!-- 가이드라인 (세션 기준 grid) -->
+        ${sessionGrid.map((g) => `
+          <line x1="${padL}" y1="${g.y}" x2="${padL + cw}" y2="${g.y}" stroke="#EEF0F3" stroke-width="1" />
+          <text x="${padL - 10}" y="${g.y + 4}" font-family="Pretendard, sans-serif" font-size="12" fill="${COLOR_TEXT_MUTED}" text-anchor="end">${g.label}</text>
+        `).join('')}
+
+        <!-- 우축 레이블 (리드·예약) -->
+        ${barGrid.map((g) => `
+          <text x="${padL + cw + 10}" y="${g.y + 4}" font-family="Pretendard, sans-serif" font-size="12" fill="${COLOR_TEXT_MUTED}" text-anchor="start">${g.label}</text>
+        `).join('')}
+
+        <!-- 축 라벨 -->
+        <text x="${padL - 40}" y="${padT - 12}" font-family="Pretendard, sans-serif" font-size="13" font-weight="600" fill="${COLOR_SESSION}" text-anchor="start">세션</text>
+        <text x="${padL + cw + 40}" y="${padT - 12}" font-family="Pretendard, sans-serif" font-size="13" font-weight="600" fill="${COLOR_LEAD}" text-anchor="end">리드·예약</text>
+
+        <!-- 막대 (리드 + 예약, 우축 기준) -->
+        ${rows.map((r, i) => {
+          const cx = padL + colW * (i + 0.5)
+          const leadH = (r.leads / maxBar) * ch
+          const resH = (r.reservations / maxBar) * ch
+          const leadX = cx - barW - gap / 2
+          const resX = cx + gap / 2
+          const leadY = padT + ch - leadH
+          const resY = padT + ch - resH
+          return `
+            ${r.leads > 0 ? `<rect x="${leadX.toFixed(1)}" y="${leadY.toFixed(1)}" width="${barW.toFixed(1)}" height="${leadH.toFixed(1)}" fill="${COLOR_LEAD}" fill-opacity="0.78" rx="2" ry="2" />` : ''}
+            ${r.reservations > 0 ? `<rect x="${resX.toFixed(1)}" y="${resY.toFixed(1)}" width="${barW.toFixed(1)}" height="${resH.toFixed(1)}" fill="${COLOR_RESERVATION}" fill-opacity="0.9" rx="2" ry="2" />` : ''}
+          `
+        }).join('')}
+
+        <!-- 세션 선 (좌축) -->
+        <polyline points="${linePoints}" fill="none" stroke="${COLOR_SESSION}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
+        ${rows.map((r, i) => {
+          const x = padL + colW * (i + 0.5)
+          const y = padT + ch - (r.sessions / maxSession) * ch
+          return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.5" fill="${COLOR_SESSION}" />`
+        }).join('')}
+
+        <!-- X 축 날짜 (45도 회전) -->
+        ${rows.map((r, i) => {
+          const x = padL + colW * (i + 0.5)
+          const y = padT + ch + 14
+          const label = r.date.slice(5)
+          return `<text x="${x.toFixed(1)}" y="${y}" font-family="Pretendard, sans-serif" font-size="11" fill="${COLOR_TEXT_MUTED}" text-anchor="end" transform="rotate(-45 ${x.toFixed(1)} ${y})">${label}</text>`
+        }).join('')}
+
+        <!-- X 축 선 -->
+        <line x1="${padL}" y1="${padT + ch}" x2="${padL + cw}" y2="${padT + ch}" stroke="${COLOR_BORDER}" stroke-width="1" />
+      </svg>
+
+      <!-- 범례 -->
+      <div style="display: flex; gap: 28px; justify-content: center; margin-top: 18px; font-size: 16px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="display: inline-block; width: 22px; height: 2.5px; background: ${COLOR_SESSION};"></span>
+          <span style="font-weight: 600;">세션</span>
+          <span style="color: ${COLOR_TEXT_MUTED}; font-size: 14px;">(좌축)</span>
         </div>
-      ` : `
-        <div style="display: flex; align-items: flex-end; gap: 4px; height: 620px; padding: 40px 20px 60px; position: relative;">
-          ${byDate.map((d) => {
-            const leadBarH = (d.leads / maxLeads) * 500
-            const resBarH = (d.reservations / maxLeads) * 500
-            return `
-              <div style="flex: 1 1 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px;">
-                <div style="width: 100%; display: flex; align-items: flex-end; gap: 2px; height: 520px;">
-                  <div style="flex: 1; height: ${leadBarH}px; background: ${COLOR_WARN}; border-radius: 3px 3px 0 0; opacity: 0.85;"></div>
-                  <div style="flex: 1; height: ${resBarH}px; background: ${COLOR_SUCCESS}; border-radius: 3px 3px 0 0;"></div>
-                </div>
-                <div style="font-size: 10px; color: ${COLOR_TEXT_MUTED}; margin-top: 6px; transform: rotate(-45deg); transform-origin: center; white-space: nowrap;">${d.date.slice(5)}</div>
-              </div>
-            `
-          }).join('')}
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="display: inline-block; width: 14px; height: 14px; background: ${COLOR_LEAD}; border-radius: 2px; opacity: 0.78;"></span>
+          <span style="font-weight: 600;">리드</span>
+          <span style="color: ${COLOR_TEXT_MUTED}; font-size: 14px;">(우축)</span>
         </div>
-        <div style="display: flex; gap: 24px; justify-content: center; margin-top: 20px; font-size: 16px;">
-          <div><span style="display: inline-block; width: 14px; height: 14px; background: ${COLOR_WARN}; border-radius: 2px; margin-right: 6px;"></span>리드</div>
-          <div><span style="display: inline-block; width: 14px; height: 14px; background: ${COLOR_SUCCESS}; border-radius: 2px; margin-right: 6px;"></span>예약</div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="display: inline-block; width: 14px; height: 14px; background: ${COLOR_RESERVATION}; border-radius: 2px;"></span>
+          <span style="font-weight: 600;">예약</span>
+          <span style="color: ${COLOR_TEXT_MUTED}; font-size: 14px;">(우축)</span>
         </div>
-      `}
+      </div>
     </div>
     ${slideFooter(6, total, periodLabel)}
   `

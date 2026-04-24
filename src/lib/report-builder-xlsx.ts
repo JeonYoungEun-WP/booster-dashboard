@@ -229,20 +229,11 @@ export function buildReportXlsx({ data, generatedAt = new Date().toISOString() }
     ['기간', periodLabel],
     ['생성일', generatedAt],
     [],
-    ['─── 데이터 소스 ───', ''],
-    ['광고 데이터', data.realDataNote ? '광고주 제공 실데이터 (하드코딩)' : '시뮬레이션'],
-    ['GA4 데이터', ga4Meta?.simulated ? '더미 (광고주 엑셀 기반)'
-      : ga4Meta?.unavailable ? 'unavailable'
-        : ga4Meta?.error ? `error: ${ga4Meta.error}`
-          : '실 데이터 (GA4 Data API)'],
-    ['리드·예약 데이터', leadsMeta?.simulated ? '더미 (광고주 실 타임스탬프 기반)' : '실 DB'],
-    ['Clarity', clarityMeta?.unavailable ? 'unavailable'
-      : clarityMeta?.error ? `error: ${clarityMeta.error}`
-        : '실 데이터'],
-    [],
     ['─── 랜딩 URL 후보 ───', ''],
     ...data.landingPaths.map((p, i): (string | number)[] => [`URL ${i + 1}`, `heypick.co.kr${p}`]),
   ]
+  // suppress unused-var warnings (유지: 추후 내부 디버그용 가능성)
+  void ga4Meta; void leadsMeta; void clarityMeta;
   const wsMeta = XLSX.utils.aoa_to_sheet(metaRows)
   wsMeta['!cols'] = [{ wch: 22 }, { wch: 60 }]
   XLSX.utils.book_append_sheet(wb, wsMeta, '메타')
