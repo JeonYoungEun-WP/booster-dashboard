@@ -9,7 +9,7 @@ import {
 const NAV_TOP = [
   { href: '/', label: '대시보드', icon: LayoutDashboard },
   { href: '/report', label: '리포트', icon: FileText },
-  { href: '/analytics', label: '이벤트', icon: BarChart3 },
+  { href: '/analytics', label: '성과 분석', icon: BarChart3 },
   { href: '/creatives', label: '소재', icon: Images },
   { href: '/ai', label: 'ai MAX', icon: Sparkles },
   { href: '/automation', label: '자동화', icon: Bell },
