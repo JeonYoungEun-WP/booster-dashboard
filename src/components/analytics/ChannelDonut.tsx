@@ -9,8 +9,12 @@ export interface ChannelDonutRow {
   leads: number
   adSpend: number
   sessions: number
-  /** 세션→리드 전환율 (0~1) */
-  cvr: number
+  /** 클릭 → 리드 전환율 (0~1) */
+  cvrLead: number
+  /** 리드 → 예약 전환율 (0~1) */
+  cvrReservation: number
+  /** 예약 → 계약 전환율 (0~1) */
+  cvrContract: number
 }
 
 interface Props {
@@ -119,16 +123,23 @@ export function ChannelDonut({ rows }: Props) {
   }, [sortedRows])
   const maxAdSpend = useMemo(() => Math.max(0, ...adSpendBars.map((r) => r.value)), [adSpendBars])
 
-  // 전환율 막대 — 채널 순서 유지 (리드 내림차순)
-  const cvrBars = useMemo(() => {
-    return sortedRows.map((r, i) => ({
+  // 전환율 막대 3종 — 채널 순서 유지 (리드 내림차순)
+  const makeBars = (key: 'cvrLead' | 'cvrReservation' | 'cvrContract') =>
+    sortedRows.map((r, i) => ({
       channel: r.channel,
       name: CHANNEL_LABEL[r.channel as AdChannel] ?? r.channel,
-      value: r.cvr,
+      value: r[key],
       color: colorFor(r.channel, i),
     }))
-  }, [sortedRows])
-  const maxCvr = useMemo(() => Math.max(0, ...cvrBars.map((r) => r.value)), [cvrBars])
+
+  const leadCvrBars = useMemo(() => makeBars('cvrLead'), [sortedRows])
+  const maxLeadCvr = useMemo(() => Math.max(0, ...leadCvrBars.map((r) => r.value)), [leadCvrBars])
+
+  const reservationCvrBars = useMemo(() => makeBars('cvrReservation'), [sortedRows])
+  const maxReservationCvr = useMemo(() => Math.max(0, ...reservationCvrBars.map((r) => r.value)), [reservationCvrBars])
+
+  const contractCvrBars = useMemo(() => makeBars('cvrContract'), [sortedRows])
+  const maxContractCvr = useMemo(() => Math.max(0, ...contractCvrBars.map((r) => r.value)), [contractCvrBars])
 
   return (
     <section className="rounded-xl border border-border bg-card p-4 h-full flex flex-col">
@@ -187,8 +198,8 @@ export function ChannelDonut({ rows }: Props) {
         </ul>
       </div>
 
-      {/* 광고비·전환율 막대그래프 — 아래 2단 */}
-      <div className="space-y-4 pt-4 border-t border-border flex-1">
+      {/* 광고비 + 퍼널 3단계 전환율 — 4 블록 */}
+      <div className="space-y-3.5 pt-3.5 border-t border-border flex-1">
         <MetricBars
           title="광고비"
           subtitle="채널별 지출"
@@ -197,11 +208,25 @@ export function ChannelDonut({ rows }: Props) {
           max={maxAdSpend}
         />
         <MetricBars
-          title="전환율"
-          subtitle="세션 대비 리드 CVR"
-          rows={cvrBars}
+          title="리드 전환율"
+          subtitle="클릭 → 리드"
+          rows={leadCvrBars}
           formatter={fmtPct}
-          max={maxCvr}
+          max={maxLeadCvr}
+        />
+        <MetricBars
+          title="예약 전환율"
+          subtitle="리드 → 예약"
+          rows={reservationCvrBars}
+          formatter={fmtPct}
+          max={maxReservationCvr}
+        />
+        <MetricBars
+          title="계약 전환율"
+          subtitle="예약 → 계약"
+          rows={contractCvrBars}
+          formatter={fmtPct}
+          max={maxContractCvr}
         />
       </div>
     </section>
