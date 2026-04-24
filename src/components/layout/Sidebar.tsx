@@ -11,7 +11,7 @@ const NAV_TOP = [
   { href: '/report', label: '리포트', icon: FileText },
   { href: '/analytics', label: '이벤트', icon: BarChart3 },
   { href: '/creatives', label: '소재', icon: Images },
-  { href: '/ai', label: 'AI', icon: Sparkles },
+  { href: '/ai', label: 'ai MAX', icon: Sparkles },
   { href: '/automation', label: '자동화', icon: Bell },
   { href: '/integrations', label: '연결', icon: Plug },
 ] as const

@@ -14,13 +14,16 @@ import { AiTableBlock, type TableBlockData } from './AiTableBlock';
 
 const CHART_COLORS = ['#4285F4', '#1877F2', '#03C75A', '#FEE500', '#a855f7', '#f97316', '#ec4899', '#64748b'];
 
-const EXAMPLES = [
-  '이번 달 광고 ROAS 분석해줘',
-  '채널별 CPA 비교해줘',
-  '가장 효율 좋은 캠페인 TOP 5',
-  'Meta vs Google 성과 비교',
-  '최근 30일 일자별 비용 추이',
-  '전환율 낮은 캠페인 진단',
+// 카테고리별 예시 — 광고 / 상담 / 최종 예약 / 풀 퍼널
+const EXAMPLES: Array<{ label: string; category: '광고' | '상담' | '예약' | '통합' }> = [
+  { label: '이벤트 1042 풀퍼널 진단해줘', category: '통합' },
+  { label: '이벤트 3550 채널별 광고비 대비 최종 예약 ROAS', category: '통합' },
+  { label: '채널별 CPA(리드) · CPA(예약) · CPA(결제) 표로', category: '통합' },
+  { label: '상담 → 예약 전환율 낮은 광고세트 TOP 3', category: '상담' },
+  { label: '리드는 많은데 최종 결제가 안 나오는 트래킹코드', category: '예약' },
+  { label: 'Meta vs TikTok 풀 퍼널 비교', category: '광고' },
+  { label: '광고비 재분배 시뮬레이션 (효율 낮은 세트 차감)', category: '광고' },
+  { label: '최근 7일 일자별 리드·예약·결제 추이', category: '예약' },
 ];
 
 interface SeriesDef { key: string; label: string; color?: string }
@@ -163,19 +166,48 @@ export function AdAiQueryBox() {
     <div className="flex flex-col h-[calc(100vh-180px)]">
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-2 py-4 space-y-4">
         {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="rounded-full bg-primary/10 p-4 mb-4">
-              <svg className="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex flex-col items-center justify-center h-full text-center px-4">
+            <div className="rounded-xl bg-brand-gradient text-white p-3 mb-5 shadow-sm">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
               </svg>
             </div>
-            <p className="text-muted-foreground text-sm mb-6">광고매체 통합 데이터를 실시간 분석합니다 (Google / Meta / Naver / Kakao)</p>
-            <div className="flex flex-wrap justify-center gap-2 max-w-lg">
-              {EXAMPLES.map((ex) => (
-                <button key={ex} onClick={() => setInputValue(ex)} className="rounded-full border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors">
-                  {ex}
-                </button>
-              ))}
+            <h2 className="text-lg font-bold mb-2">
+              <span className="lowercase">ai</span> <span className="text-brand-gradient">MAX</span> 풀 퍼널 분석
+            </h2>
+            <p className="text-muted-foreground text-sm mb-1 max-w-md">
+              광고 · 상담 · 최종 예약까지 전체 퍼널 데이터를 통합 분석합니다.
+            </p>
+            <p className="text-muted-foreground/70 text-xs mb-6">
+              Google · Meta · Naver · Kakao · TikTok · 당근 + 이벤트 랜딩 퍼널 (리드 → 상담 → 예약 → 결제)
+            </p>
+
+            {/* 카테고리 태그 */}
+            <div className="flex flex-wrap justify-center gap-1.5 mb-4">
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-semibold">통합 퍼널</span>
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-semibold">광고 성과</span>
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200 font-semibold">상담 성과</span>
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">최종 예약 성과</span>
+            </div>
+
+            <div className="flex flex-wrap justify-center gap-2 max-w-2xl">
+              {EXAMPLES.map((ex) => {
+                const catColor: Record<string, string> = {
+                  '통합': 'border-primary/30 text-primary hover:bg-primary/5',
+                  '광고': 'border-amber-200 text-amber-700 hover:bg-amber-50',
+                  '상담': 'border-sky-200 text-sky-700 hover:bg-sky-50',
+                  '예약': 'border-emerald-200 text-emerald-700 hover:bg-emerald-50',
+                }
+                return (
+                  <button
+                    key={ex.label}
+                    onClick={() => setInputValue(ex.label)}
+                    className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors ${catColor[ex.category]}`}
+                  >
+                    {ex.label}
+                  </button>
+                )
+              })}
             </div>
           </div>
         )}
@@ -263,7 +295,7 @@ export function AdAiQueryBox() {
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            placeholder={messages.length === 0 ? '광고 성과 관련 분석을 입력하세요...' : '이어서 질문하세요...'}
+            placeholder={messages.length === 0 ? '광고 · 상담 · 예약 성과를 풀 퍼널로 물어보세요...' : '이어서 질문하세요...'}
             className="flex-1 rounded-lg border border-border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
             disabled={isLoading}
           />

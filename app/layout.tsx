@@ -3,8 +3,8 @@ import { Sidebar, MobileTabBar } from "@/src/components/layout/Sidebar";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Booster Dashboard",
-  description: "Google · Meta · Naver · Kakao · TikTok · 당근 통합 광고 성과 분석",
+  title: "boosterMAX Dashboard",
+  description: "광고 · 상담 · 최종 예약 풀 퍼널 통합 분석 (Google · Meta · Naver · Kakao · TikTok · 당근)",
 };
 
 export default function RootLayout({
