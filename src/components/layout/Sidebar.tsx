@@ -3,12 +3,10 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutDashboard, FileText, Images, Sparkles, Bell, Plug, Settings, BarChart3,
+  Images, Sparkles, Bell, Plug, Settings, BarChart3,
 } from 'lucide-react'
 
 const NAV_TOP = [
-  { href: '/', label: '대시보드', icon: LayoutDashboard },
-  { href: '/report', label: '리포트', icon: FileText },
   { href: '/analytics', label: '성과 분석', icon: BarChart3 },
   { href: '/creatives', label: '소재', icon: Images },
   { href: '/ai', label: 'ai MAX', icon: Sparkles },
@@ -56,7 +54,7 @@ export function Sidebar() {
     <aside className="hidden md:flex flex-col shrink-0 border-r border-border bg-white/60 backdrop-blur sticky top-0 h-screen"
            style={{ width: 72 }}>
       <div className="flex items-center justify-center h-14 border-b border-border">
-        <Link href="/" className="w-9 h-9 rounded-lg bg-brand-gradient text-white font-bold text-sm flex items-center justify-center shadow-sm" title="boosterMAX Dashboard">
+        <Link href="/analytics" className="w-9 h-9 rounded-lg bg-brand-gradient text-white font-bold text-sm flex items-center justify-center shadow-sm" title="boosterMAX Dashboard">
           B
         </Link>
       </div>
