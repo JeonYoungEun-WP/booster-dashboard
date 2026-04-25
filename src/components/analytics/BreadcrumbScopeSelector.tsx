@@ -1,7 +1,9 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { ChevronRight, Building2, FolderKanban, FileText } from 'lucide-react'
+import {
+  ChevronRight, ChevronDown, Building2, FolderKanban, FileText, type LucideIcon,
+} from 'lucide-react'
 import {
   BRAND_CATALOG,
   type ScopeType, type ScopeBreadcrumb,
@@ -11,104 +13,169 @@ interface Props {
   breadcrumb: ScopeBreadcrumb
 }
 
+const SCOPE_LABEL: Record<ScopeType, string> = {
+  brand: '브랜드',
+  project: '프로젝트',
+  event: '랜딩페이지',
+}
+
 function navigate(router: ReturnType<typeof useRouter>, scope: ScopeType, id: string) {
   router.push(`/analytics/${scope}/${id}`)
 }
 
+interface StepCardProps {
+  level: ScopeType
+  icon: LucideIcon
+  active: boolean
+  selectedValue: string
+  options: Array<{ value: string; label: string }>
+  allOptionLabel?: string
+  onChange: (value: string) => void
+}
+
+function StepCard({
+  level, icon: Icon, active, selectedValue, options, allOptionLabel, onChange,
+}: StepCardProps) {
+  const label = SCOPE_LABEL[level]
+  return (
+    <div
+      className={`relative flex-1 min-w-[200px] rounded-xl border-2 p-3 transition-all ${
+        active
+          ? 'border-primary bg-primary/[0.04] shadow-sm ring-2 ring-primary/15'
+          : 'border-border bg-white hover:border-primary/30 hover:shadow-sm'
+      }`}
+    >
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <Icon size={14} className={active ? 'text-primary' : 'text-muted-foreground'} strokeWidth={active ? 2.4 : 2} />
+        <span className={`text-[11px] font-bold uppercase tracking-wider ${
+          active ? 'text-primary' : 'text-muted-foreground'
+        }`}>
+          {label}
+        </span>
+        {active && (
+          <span className="ml-auto inline-flex items-center text-[10px] bg-primary text-white rounded-full px-2 py-0.5 font-bold leading-none">
+            현재 보는 중
+          </span>
+        )}
+      </div>
+      <div className="relative">
+        <select
+          value={selectedValue}
+          onChange={(e) => onChange(e.target.value)}
+          aria-label={`${label} 선택`}
+          className={`w-full appearance-none rounded-lg border px-3 py-2 pr-9 text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors ${
+            active
+              ? 'border-primary/40 bg-white font-bold text-foreground hover:border-primary'
+              : 'border-border bg-white font-medium text-foreground hover:border-primary/40'
+          }`}
+        >
+          {allOptionLabel && (
+            <option value="_all">{allOptionLabel}</option>
+          )}
+          {options.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+        <ChevronDown
+          size={16}
+          className={`absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none ${
+            active ? 'text-primary' : 'text-muted-foreground'
+          }`}
+          strokeWidth={2.2}
+        />
+      </div>
+    </div>
+  )
+}
+
 /**
- * 성과 분석 상단 3단 드롭다운 (브랜드 > 프로젝트 > 랜딩페이지)
+ * 성과 분석 상단 3단 스코프 셀렉터 (브랜드 > 프로젝트 > 랜딩페이지)
  *
- * 동작:
- * - 브랜드 변경 → /analytics/brand/{id}
- * - 프로젝트 변경 → /analytics/project/{id}  ("전체 프로젝트" 선택 시 브랜드 수준으로 상승)
- * - 랜딩페이지 변경 → /analytics/event/{id}  ("전체 랜딩페이지" 선택 시 프로젝트 수준으로 상승)
+ * - 현재 분석 단계가 카드 단위로 강조 (primary 보더 + "현재 보는 중" 배지)
+ * - 각 카드는 드롭다운 — 변경 시 해당 스코프로 라우팅 이동
+ * - "전체 …" 옵션은 상위 스코프로 상승
  */
 export function BreadcrumbScopeSelector({ breadcrumb }: Props) {
   const router = useRouter()
   const { brand, project, event, scope } = breadcrumb
 
-  // 사용 가능한 옵션 추출
-  const brandOptions = BRAND_CATALOG
-  const projectOptions = brand?.projects ?? []
-  const eventOptions = project?.events ?? brand?.projects.flatMap((p) => p.events) ?? []
+  const brandOptions = BRAND_CATALOG.map((b) => ({ value: b.id, label: b.name }))
+  const projectList = brand?.projects ?? []
+  const projectOptions = projectList.map((p) => ({ value: p.id, label: p.name }))
+  const eventList = project?.events ?? brand?.projects.flatMap((p) => p.events) ?? []
+  const eventOptions = eventList.map((e) => ({ value: e.id, label: e.name }))
+
+  const onBrandChange = (v: string) => navigate(router, 'brand', v)
+
+  const onProjectChange = (v: string) => {
+    if (v === '_all') {
+      if (brand) navigate(router, 'brand', brand.id)
+    } else {
+      navigate(router, 'project', v)
+    }
+  }
+
+  const onEventChange = (v: string) => {
+    if (v === '_all') {
+      if (project) navigate(router, 'project', project.id)
+      else if (brand) navigate(router, 'brand', brand.id)
+    } else {
+      navigate(router, 'event', v)
+    }
+  }
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 text-sm">
-      {/* 브랜드 드롭다운 */}
-      <div className="inline-flex items-center gap-1.5">
-        <Building2 size={14} className="text-muted-foreground" />
-        <select
-          value={brand?.id ?? ''}
-          onChange={(e) => navigate(router, 'brand', e.target.value)}
-          className="rounded-md border border-border bg-white px-2.5 py-1.5 pr-8 text-sm font-semibold text-foreground hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer appearance-none bg-[url('data:image/svg+xml;utf8,<svg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%2212%22%20height=%2212%22%20viewBox=%220%200%2024%2024%22%20fill=%22none%22%20stroke=%22currentColor%22%20stroke-width=%222%22%20stroke-linecap=%22round%22%20stroke-linejoin=%22round%22><polyline%20points=%226%209%2012%2015%2018%209%22/></svg>')] bg-[position:right_8px_center] bg-no-repeat"
-        >
-          {brandOptions.map((b) => (
-            <option key={b.id} value={b.id}>{b.name}</option>
-          ))}
-        </select>
+    <div className="rounded-2xl border border-border bg-card p-4">
+      {/* 헤더: 분석 범위 안내 + 현재 스코프 배지 */}
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-foreground">분석 범위 선택</span>
+          <span className="text-xs text-muted-foreground">아래 리스트박스에서 단계를 변경하세요</span>
+        </div>
+        <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border ${
+          scope === 'event' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+          scope === 'project' ? 'bg-sky-50 text-sky-700 border-sky-200' :
+          'bg-primary/10 text-primary border-primary/30'
+        }`}>
+          현재: {SCOPE_LABEL[scope]} 기준
+        </span>
       </div>
 
-      <ChevronRight size={14} className="text-muted-foreground/50" />
-
-      {/* 프로젝트 드롭다운 */}
-      <div className="inline-flex items-center gap-1.5">
-        <FolderKanban size={14} className="text-muted-foreground" />
-        <select
-          value={project?.id ?? '_all'}
-          onChange={(e) => {
-            const v = e.target.value
-            if (v === '_all') {
-              // 브랜드 수준으로
-              if (brand) navigate(router, 'brand', brand.id)
-            } else {
-              navigate(router, 'project', v)
-            }
-          }}
-          className="rounded-md border border-border bg-white px-2.5 py-1.5 pr-8 text-sm font-medium text-foreground hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer appearance-none bg-[url('data:image/svg+xml;utf8,<svg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%2212%22%20height=%2212%22%20viewBox=%220%200%2024%2024%22%20fill=%22none%22%20stroke=%22currentColor%22%20stroke-width=%222%22%20stroke-linecap=%22round%22%20stroke-linejoin=%22round%22><polyline%20points=%226%209%2012%2015%2018%209%22/></svg>')] bg-[position:right_8px_center] bg-no-repeat"
-        >
-          <option value="_all">전체 프로젝트 ({projectOptions.length})</option>
-          {projectOptions.map((p) => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </select>
+      {/* 3 단계 스텝 카드 */}
+      <div className="flex items-stretch gap-2 flex-wrap md:flex-nowrap">
+        <StepCard
+          level="brand"
+          icon={Building2}
+          active={scope === 'brand'}
+          selectedValue={brand?.id ?? ''}
+          options={brandOptions}
+          onChange={onBrandChange}
+        />
+        <div className="flex items-center text-muted-foreground/60 px-1 self-center">
+          <ChevronRight size={20} />
+        </div>
+        <StepCard
+          level="project"
+          icon={FolderKanban}
+          active={scope === 'project'}
+          selectedValue={project?.id ?? '_all'}
+          options={projectOptions}
+          allOptionLabel={`전체 프로젝트 (${projectList.length})`}
+          onChange={onProjectChange}
+        />
+        <div className="flex items-center text-muted-foreground/60 px-1 self-center">
+          <ChevronRight size={20} />
+        </div>
+        <StepCard
+          level="event"
+          icon={FileText}
+          active={scope === 'event'}
+          selectedValue={event?.id ?? '_all'}
+          options={eventOptions}
+          allOptionLabel={`전체 랜딩페이지 (${eventList.length})`}
+          onChange={onEventChange}
+        />
       </div>
-
-      <ChevronRight size={14} className="text-muted-foreground/50" />
-
-      {/* 랜딩페이지 드롭다운 */}
-      <div className="inline-flex items-center gap-1.5">
-        <FileText size={14} className="text-muted-foreground" />
-        <select
-          value={event?.id ?? '_all'}
-          onChange={(e) => {
-            const v = e.target.value
-            if (v === '_all') {
-              // 프로젝트 수준으로 (프로젝트 없으면 브랜드로)
-              if (project) navigate(router, 'project', project.id)
-              else if (brand) navigate(router, 'brand', brand.id)
-            } else {
-              navigate(router, 'event', v)
-            }
-          }}
-          className="rounded-md border border-border bg-white px-2.5 py-1.5 pr-8 text-sm font-medium text-foreground hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer appearance-none bg-[url('data:image/svg+xml;utf8,<svg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%2212%22%20height=%2212%22%20viewBox=%220%200%2024%2024%22%20fill=%22none%22%20stroke=%22currentColor%22%20stroke-width=%222%22%20stroke-linecap=%22round%22%20stroke-linejoin=%22round%22><polyline%20points=%226%209%2012%2015%2018%209%22/></svg>')] bg-[position:right_8px_center] bg-no-repeat"
-        >
-          <option value="_all">
-            전체 랜딩페이지 ({eventOptions.length})
-          </option>
-          {eventOptions.map((e) => (
-            <option key={e.id} value={e.id}>{e.name}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* 현재 스코프 배지 */}
-      <span className={`ml-2 inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
-        scope === 'event' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-        scope === 'project' ? 'bg-sky-50 text-sky-700 border-sky-200' :
-        'bg-primary/10 text-primary border-primary/20'
-      }`}>
-        {scope === 'event' ? '랜딩페이지' : scope === 'project' ? '프로젝트' : '브랜드'} 기준
-      </span>
     </div>
   )
 }

@@ -35,8 +35,8 @@ export function FunnelFlow({
   return (
     <section className="rounded-xl border border-border bg-card p-5">
       <div className="flex items-baseline justify-between mb-4">
-        <h2 className="text-base font-semibold">광고비 → {finalStageLabel} 퍼널</h2>
-        <span className="text-sm text-muted-foreground">단계별 전환율 표기</span>
+        <h2 className="text-base font-semibold">노출 → {finalStageLabel} 흐름</h2>
+        <span className="text-sm text-muted-foreground">단계별 전환율과 획득당 비용</span>
       </div>
 
       {/* 퍼널 단계 카드 — 가로 스크롤 */}

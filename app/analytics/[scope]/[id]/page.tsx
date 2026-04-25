@@ -295,7 +295,7 @@ export default function ScopeAnalyticsPage() {
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 space-y-3">
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div>
-              <h1 className="text-2xl font-bold">성과 분석</h1>
+              <h1 className="text-2xl font-bold">풀퍼널 성과분석</h1>
               <p className="text-sm text-muted-foreground mt-1">
                 {breadcrumb ? `${breadcrumb.title} · ${breadcrumb.subtitle}` : '로딩 중…'}
               </p>
