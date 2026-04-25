@@ -31,18 +31,25 @@ interface StepCardProps {
   options: Array<{ value: string; label: string }>
   allOptionLabel?: string
   onChange: (value: string) => void
+  /** 카드 영역 자체를 클릭했을 때 이동할 핸들러 (비활성 카드만 의미). null 이면 카드 클릭 비활성. */
+  onCardClick: (() => void) | null
 }
 
 function StepCard({
-  level, icon: Icon, active, selectedValue, options, allOptionLabel, onChange,
+  level, icon: Icon, active, selectedValue, options, allOptionLabel, onChange, onCardClick,
 }: StepCardProps) {
   const label = SCOPE_LABEL[level]
+  const cardClickable = !active && onCardClick !== null
   return (
     <div
+      onClick={cardClickable ? onCardClick! : undefined}
+      role={cardClickable ? 'button' : undefined}
+      tabIndex={cardClickable ? 0 : -1}
+      onKeyDown={cardClickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onCardClick!() } } : undefined}
       className={`relative flex-1 min-w-[200px] rounded-xl border-2 p-3 transition-all ${
         active
           ? 'border-primary bg-primary/[0.04] shadow-sm ring-2 ring-primary/15'
-          : 'border-border bg-white hover:border-primary/30 hover:shadow-sm'
+          : `border-border bg-white hover:border-primary/40 hover:shadow-sm hover:bg-primary/[0.02] ${cardClickable ? 'cursor-pointer' : ''}`
       }`}
     >
       <div className="flex items-center gap-1.5 mb-1.5">
@@ -52,13 +59,21 @@ function StepCard({
         }`}>
           {label}
         </span>
-        {active && (
+        {active ? (
           <span className="ml-auto inline-flex items-center text-[11px] bg-primary text-white rounded-full px-2 py-0.5 font-bold leading-none">
             현재 보는 중
           </span>
-        )}
+        ) : cardClickable ? (
+          <span className="ml-auto inline-flex items-center text-[11px] text-primary font-semibold leading-none">
+            클릭하여 이동 →
+          </span>
+        ) : null}
       </div>
-      <div className="relative">
+      {/* select 클릭은 카드 onClick 으로 전파되지 않게 stopPropagation */}
+      <div
+        className="relative"
+        onClick={(e) => e.stopPropagation()}
+      >
         <select
           value={selectedValue}
           onChange={(e) => onChange(e.target.value)}
@@ -150,6 +165,7 @@ export function BreadcrumbScopeSelector({ breadcrumb }: Props) {
           selectedValue={brand?.id ?? ''}
           options={brandOptions}
           onChange={onBrandChange}
+          onCardClick={brand ? () => navigate(router, 'brand', brand.id) : null}
         />
         <div className="flex items-center text-muted-foreground/60 px-1 self-center">
           <ChevronRight size={20} />
@@ -162,6 +178,7 @@ export function BreadcrumbScopeSelector({ breadcrumb }: Props) {
           options={projectOptions}
           allOptionLabel={`전체 프로젝트 (${projectList.length})`}
           onChange={onProjectChange}
+          onCardClick={project ? () => navigate(router, 'project', project.id) : null}
         />
         <div className="flex items-center text-muted-foreground/60 px-1 self-center">
           <ChevronRight size={20} />
@@ -174,6 +191,7 @@ export function BreadcrumbScopeSelector({ breadcrumb }: Props) {
           options={eventOptions}
           allOptionLabel={`전체 랜딩페이지 (${eventList.length})`}
           onChange={onEventChange}
+          onCardClick={event ? () => navigate(router, 'event', event.id) : null}
         />
       </div>
     </div>
