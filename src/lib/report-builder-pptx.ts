@@ -29,6 +29,7 @@ const COLOR_BORDER = 'E1E4E9'         // border (HSL 220 9% 90%)
 const COLOR_BG_LIGHT = 'F3F4F6'       // muted (HSL 220 10% 96%)
 const COLOR_SUCCESS = '22C55E'        // success (HSL 142 71% 45%)
 const COLOR_WARN = 'F59E0B'           // warning (HSL 38 92% 50%)
+const COLOR_SESSION = '3983E2'        // 일자별 추이 세션 라인 (HTML TrendChart 매치)
 
 function fmtKRW(n: number): string {
   return '₩' + Math.round(n).toLocaleString('ko-KR')
@@ -449,7 +450,13 @@ export async function buildReportPptx({
       fontFace: BRAND_FONT, fontSize: 9, color: COLOR_TEXT_MUTED,
     })
     const barTop = leftY + 3.0
-    const barSlotH = Math.min(0.28, (leftH - 3.15) / Math.max(1, channelRows.length))
+    // 채널 2+ 일 때 레이더 자리 확보 (HTML ChannelDonut 동작 매치)
+    const reserveRadar = channelRows.length >= 2
+    const radarH = reserveRadar ? 2.2 : 0
+    const barRegionH = reserveRadar
+      ? Math.max(0.6, leftH - 3.15 - radarH - 0.35)
+      : leftH - 3.15
+    const barSlotH = Math.min(0.28, barRegionH / Math.max(1, channelRows.length))
     channelRows.forEach((c, i) => {
       const rowY = barTop + i * barSlotH
       const pct = Math.max(0.05, c.adSpend / maxSpend)
@@ -483,6 +490,54 @@ export async function buildReportPptx({
         fontFace: BRAND_FONT, fontSize: 9, bold: true, color: COLOR_TEXT_DARK,
       })
     })
+
+    // ───── 채널 프로파일 레이더 (채널 2+ · HTML ChannelRadar 매치) ─────
+    if (reserveRadar) {
+      const radarTop = barTop + channelRows.length * barSlotH + 0.35
+      const radarBoxX = leftX + 0.2
+      const radarBoxW = leftW - 0.4
+
+      // 헤더
+      slide.addText('채널 프로파일', {
+        x: radarBoxX, y: radarTop, w: radarBoxW, h: 0.28,
+        fontFace: BRAND_FONT, fontSize: 12, bold: true, color: COLOR_TEXT_DARK,
+      })
+      slide.addText('각 지표 최댓값 대비', {
+        x: radarBoxX, y: radarTop, w: radarBoxW, h: 0.28,
+        align: 'right',
+        fontFace: BRAND_FONT, fontSize: 9, color: COLOR_TEXT_MUTED,
+      })
+
+      // 메트릭 정의 (HTML ChannelRadar 와 순서·라벨 동일)
+      const radarMetrics = [
+        { label: '리드 전환',  get: (c: typeof channelRows[0]) => (c.clicks > 0 ? c.leads / c.clicks : 0) },
+        { label: '예약 전환',  get: (c: typeof channelRows[0]) => (c.leads > 0 ? c.reservations / c.leads : 0) },
+        { label: '계약 전환',  get: (c: typeof channelRows[0]) => (c.reservations > 0 ? c.contracts / c.reservations : 0) },
+        { label: 'ROAS',       get: (c: typeof channelRows[0]) => c.roas },
+      ]
+      // 정규화 분모: 메트릭별 최댓값
+      const radarMaxByMetric = radarMetrics.map((m) =>
+        Math.max(0.0001, ...channelRows.map((c) => m.get(c))),
+      )
+      const radarLabels = radarMetrics.map((m) => m.label)
+
+      const radarData = channelRows.map((c) => ({
+        name: CHANNEL_KO[c.channel] ?? c.channel,
+        labels: radarLabels,
+        values: radarMetrics.map((m, i) => (m.get(c) / radarMaxByMetric[i]) * 100),
+      }))
+
+      slide.addChart(pptx.ChartType.radar, radarData, {
+        x: radarBoxX, y: radarTop + 0.32, w: radarBoxW, h: radarH - 0.4,
+        radarStyle: 'standard',
+        chartColors: channelRows.map((c) => CHANNEL_COLORS[c.channel] ?? COLOR_BRAND),
+        showLegend: true,
+        legendPos: 'b',
+        legendFontSize: 8,
+        catAxisLabelFontSize: 9,
+        showValue: false,
+      })
+    }
 
     // ───── 우측 패널: 채널 퍼널 비교 테이블 ─────
     const rightX = 5.0
@@ -692,7 +747,7 @@ export async function buildReportPptx({
             { name: '세션', labels, values: sessionsVals },
           ],
           options: {
-            chartColors: [COLOR_BRAND],
+            chartColors: [COLOR_SESSION],   // HTML TrendChart 세션 라인 매치 (#3983E2)
             secondaryValAxis: true,
             secondaryCatAxis: true,
           },
