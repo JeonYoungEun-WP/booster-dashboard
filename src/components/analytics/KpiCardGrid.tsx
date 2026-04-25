@@ -56,8 +56,8 @@ function computeDelta(cur: number, prev: number | null | undefined, asPoints?: b
 function DeltaPill({ delta }: { delta: ReturnType<typeof computeDelta> }) {
   if (!delta) {
     return (
-      <span className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
-        <Minus size={10} /> —
+      <span className="inline-flex items-center gap-0.5 text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
+        <Minus size={11} /> —
       </span>
     )
   }
@@ -74,8 +74,8 @@ function DeltaPill({ delta }: { delta: ReturnType<typeof computeDelta> }) {
     ? `${sign}${delta.value.toFixed(1)}p`
     : `${sign}${(delta.value * 100).toFixed(1)}%`
   return (
-    <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full ${cls}`}>
-      <Icon size={10} /> {text}
+    <span className={`inline-flex items-center gap-0.5 text-[11px] font-medium px-1.5 py-0.5 rounded-full ${cls}`}>
+      <Icon size={11} /> {text}
     </span>
   )
 }
@@ -92,29 +92,29 @@ export function KpiCardGrid({ items, prevLabel = '전기' }: Props) {
             ? 'bg-amber-50/60 border-amber-200'
             : 'bg-card border-border'
         return (
-          <div key={it.label} className={`rounded-xl border p-4 ${cardCls}`}>
-            <div className="flex items-center justify-between gap-1.5 mb-1.5">
+          <div key={it.label} className={`rounded-xl border p-5 ${cardCls}`}>
+            <div className="flex items-center justify-between gap-1.5 mb-2">
               <div className="flex items-center gap-1.5 min-w-0">
                 <span className="text-xs text-muted-foreground truncate">{it.label}</span>
                 <SourceBadge source={it.source} />
               </div>
               <DeltaPill delta={delta} />
             </div>
-            <p className="text-2xl font-bold tabular-nums leading-tight">
+            <p className="text-3xl font-bold tabular-nums leading-tight">
               {formatValue(it.value, it.format)}
             </p>
             {it.prevValue != null && (
-              <p className="text-[11px] text-muted-foreground mt-0.5 tabular-nums">
+              <p className="text-xs text-muted-foreground mt-1 tabular-nums">
                 {prevLabel} {formatValue(it.prevValue, it.format)}
               </p>
             )}
             {(it.conversion || it.unitPrice) && (
-              <div className="mt-2 pt-2 border-t border-border/60 space-y-0.5">
+              <div className="mt-2.5 pt-2.5 border-t border-border/60 space-y-1">
                 {it.conversion && (
-                  <p className="text-[11px] text-emerald-600 font-medium tabular-nums">{it.conversion}</p>
+                  <p className="text-xs text-emerald-600 font-medium tabular-nums">{it.conversion}</p>
                 )}
                 {it.unitPrice && (
-                  <p className="text-[11px] text-muted-foreground tabular-nums">{it.unitPrice}</p>
+                  <p className="text-xs text-muted-foreground tabular-nums">{it.unitPrice}</p>
                 )}
               </div>
             )}

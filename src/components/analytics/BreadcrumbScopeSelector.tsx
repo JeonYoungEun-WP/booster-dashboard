@@ -53,7 +53,7 @@ function StepCard({
           {label}
         </span>
         {active && (
-          <span className="ml-auto inline-flex items-center text-[10px] bg-primary text-white rounded-full px-2 py-0.5 font-bold leading-none">
+          <span className="ml-auto inline-flex items-center text-[11px] bg-primary text-white rounded-full px-2 py-0.5 font-bold leading-none">
             현재 보는 중
           </span>
         )}
@@ -125,7 +125,7 @@ export function BreadcrumbScopeSelector({ breadcrumb }: Props) {
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-4">
+    <div className="rounded-xl border border-border bg-card p-5">
       {/* 헤더: 분석 범위 안내 + 현재 스코프 배지 */}
       <div className="flex items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-2">

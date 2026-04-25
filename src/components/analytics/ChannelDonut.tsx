@@ -145,8 +145,8 @@ export function ChannelDonut({ rows }: Props) {
   const maxContractCvr = useMemo(() => Math.max(0, ...contractCvrBars.map((r) => r.value)), [contractCvrBars])
 
   return (
-    <section className="rounded-xl border border-border bg-card p-4 h-full flex flex-col">
-      <div className="flex items-baseline justify-between mb-3">
+    <section className="rounded-xl border border-border bg-card p-5 h-full flex flex-col">
+      <div className="flex items-baseline justify-between mb-4">
         <h2 className="text-base font-semibold">채널 비중</h2>
         <span className="text-sm text-muted-foreground">리드 기준</span>
       </div>
@@ -179,7 +179,7 @@ export function ChannelDonut({ rows }: Props) {
             </PieChart>
           </ResponsiveContainer>
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <span className="text-[10px] text-muted-foreground leading-none">총 리드</span>
+            <span className="text-[11px] text-muted-foreground leading-none">총 리드</span>
             <span className="text-base font-bold tabular-nums leading-tight mt-0.5">{fmtNumber(total)}</span>
           </div>
         </div>

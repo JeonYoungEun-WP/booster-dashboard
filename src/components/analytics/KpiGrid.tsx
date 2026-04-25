@@ -34,7 +34,7 @@ export function KpiGrid({ items }: KpiGridProps) {
   return (
     <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
       {items.map((it) => (
-        <div key={it.label} className="rounded-xl border border-border bg-card p-4">
+        <div key={it.label} className="rounded-xl border border-border bg-card p-5">
           <div className="flex items-center justify-between gap-2 mb-2">
             <p className="text-sm text-muted-foreground">{it.label}</p>
             {it.source && <SourceBadge source={it.source} />}

@@ -113,7 +113,7 @@ export function ChannelFunnelCompareTable({
                       </div>
                       <div>
                         <div className="text-base font-medium">{label}</div>
-                        <span className={`inline-block mt-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded border ${
+                        <span className={`inline-block mt-0.5 text-[11px] font-medium px-1.5 py-0.5 rounded border ${
                           stageMeta.source === 'admin'
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                             : stageMeta.source === 'ga'

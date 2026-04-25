@@ -291,8 +291,8 @@ export default function ScopeAnalyticsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-10 border-b border-border bg-white/80 backdrop-blur">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 space-y-3">
+      <header className="border-b border-border bg-white">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-5">
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div>
               <h1 className="text-2xl font-bold">풀퍼널 성과분석</h1>
@@ -308,51 +308,45 @@ export default function ScopeAnalyticsPage() {
                 테스트 제외
               </label>
               <button type="button" onClick={() => setRefreshTick((t) => t + 1)}
-                className="inline-flex items-center gap-1 text-sm rounded-md border border-border px-2.5 py-1.5 hover:bg-muted"
-                title="새로고침">
-                <RefreshCw size={14} /> 새로고침
+                className="inline-flex items-center justify-center w-9 h-9 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                title="새로고침" aria-label="새로고침">
+                <RefreshCw size={16} />
               </button>
               <button type="button" onClick={() => setReportOpen(true)} disabled={!data}
-                className="inline-flex items-center gap-1 text-sm rounded-md bg-primary text-primary-foreground px-3 py-1.5 hover:bg-primary/90 disabled:opacity-50 font-semibold"
+                className="inline-flex items-center gap-1.5 text-sm rounded-md bg-primary text-primary-foreground px-3.5 py-2 hover:bg-primary/90 disabled:opacity-50 font-semibold shadow-sm"
                 title="리포트 모드 (PPT·PDF·Excel 다운로드)">
                 <FileText size={14} /> 리포트 모드
               </button>
             </div>
           </div>
-
-          {/* 브레드크럼 스코프 셀렉터 */}
-          {breadcrumb && (
-            <div className="flex flex-wrap items-center gap-2">
-              <BreadcrumbScopeSelector breadcrumb={breadcrumb} />
-            </div>
-          )}
-
-          <div className="flex flex-wrap items-center gap-2">
-            <DateRangePicker startDate={startDate} endDate={endDate}
-              onChange={(s, e) => { setStartDate(s); setEndDate(e) }} />
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {data?.scope === 'event' && data?.landingPaths?.length > 0 && (
-              <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span className="text-muted-foreground/70">랜딩 URL:</span>
-                {data.landingPaths.map((p) => (
-                  <span key={p} className="bg-muted px-2 py-0.5 rounded font-mono">
-                    heypick.co.kr{p}
-                  </span>
-                ))}
-              </div>
-            )}
-            {data?.leads.simulated && (
-              <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-0.5 inline-block">
-                🧪 리드·예약 더미 (Phase 2 에서 실 DB 연동)
-              </div>
-            )}
-          </div>
         </div>
       </header>
 
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-5 space-y-5">
+        {/* 분석 범위 셀렉터 (스코프 카드) */}
+        {breadcrumb && <BreadcrumbScopeSelector breadcrumb={breadcrumb} />}
+
+        {/* 기간 + 메타 정보 라인 */}
+        <div className="flex flex-wrap items-center gap-2">
+          <DateRangePicker startDate={startDate} endDate={endDate}
+            onChange={(s, e) => { setStartDate(s); setEndDate(e) }} />
+          {data?.scope === 'event' && data?.landingPaths?.length > 0 && (
+            <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground ml-auto">
+              <span className="text-muted-foreground/70">랜딩 URL:</span>
+              {data.landingPaths.map((p) => (
+                <span key={p} className="bg-muted px-2 py-0.5 rounded font-mono">
+                  heypick.co.kr{p}
+                </span>
+              ))}
+            </div>
+          )}
+          {data?.leads.simulated && (
+            <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-0.5">
+              🧪 리드·예약 더미 (Phase 2 에서 실 DB 연동)
+            </div>
+          )}
+        </div>
+
         {loading && !data && (
           <div className="text-center text-base text-muted-foreground py-20">데이터를 불러오는 중...</div>
         )}
