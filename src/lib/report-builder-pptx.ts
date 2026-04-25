@@ -143,47 +143,13 @@ export async function buildReportPptx({
 
   const f = data.funnel
 
-  // ═════════ 슬라이드 1 — 표지 (브랜드 그라디언트) ═════════
+  // ═════════ 슬라이드 1 — 표지 (브랜드 그린 단색 배경, 도형 없음) ═════════
   {
     const slide = pptx.addSlide()
-    // 베이스: 브랜드 그린 (그라디언트 시작)
-    slide.background = { color: COLOR_BRAND_SUB }
+    // 부스터맥스 메인 컬러 그린 단색 배경
+    slide.background = { color: COLOR_BRAND }
 
-    // 그라디언트 효과 — 반투명 블루 오버레이 (우측 → 좌측 전개)
-    // 104deg 방향: 대각선 하단-좌 → 상단-우 방향
-    // pptxgenjs 네이티브 gradient 미지원 → 단계적 반투명 사각형으로 approx
-    for (let i = 0; i < 8; i++) {
-      const t = i / 7
-      const transparency = Math.round(20 + t * 70) // 20% → 90% 투명도 (좌측일수록 진함)
-      slide.addShape('rect', {
-        x: SLIDE_W * (0.15 + t * 0.85),
-        y: 0,
-        w: SLIDE_W * 0.5,
-        h: SLIDE_H,
-        fill: { color: COLOR_BRAND, transparency },
-        line: { color: COLOR_BRAND, width: 0 },
-      })
-    }
-    // 상단 블루 강조 (딥 블루 텍스트 톤 매치)
-    slide.addShape('rect', {
-      x: SLIDE_W * 0.55, y: 0, w: SLIDE_W * 0.45, h: SLIDE_H,
-      fill: { color: COLOR_BRAND_DARK, transparency: 70 },
-      line: { color: COLOR_BRAND_DARK, width: 0 },
-    })
-
-    // 장식 서클 (우측 상단) — 브랜드 스타일 악센트
-    slide.addShape('ellipse', {
-      x: SLIDE_W - 2.2, y: -0.5, w: 2.5, h: 2.5,
-      fill: { color: COLOR_BRAND_SUB, transparency: 60 },
-      line: { color: 'FFFFFF', width: 0 },
-    })
-    slide.addShape('ellipse', {
-      x: SLIDE_W - 1.3, y: 0.4, w: 1.3, h: 1.3,
-      fill: { color: COLOR_BRAND_ACCENT, transparency: 50 },
-      line: { color: 'FFFFFF', width: 0 },
-    })
-
-    // 브랜드 마크 placeholder (로고 나중 삽입)
+    // 브랜드 마크 (좌상단)
     slide.addText(BRAND_NAME, {
       x: 0.7, y: 0.6, w: 4, h: 0.5,
       fontFace: BRAND_FONT, fontSize: 16, color: 'FFFFFF', bold: true,
@@ -199,17 +165,10 @@ export async function buildReportPptx({
       fontFace: BRAND_FONT, fontSize: 22, color: 'FFFFFF',
     })
 
-    // 기간 배지
-    slide.addShape('roundRect', {
-      x: 0.7, y: 4.5, w: 5, h: 0.6,
-      fill: { color: 'FFFFFF', transparency: 85 },
-      line: { color: 'FFFFFF', width: 0 },
-      rectRadius: 0.3,
-    })
+    // 기간 (도형 배지 없이 텍스트만)
     slide.addText(`기간  ${periodLabel}`, {
-      x: 0.7, y: 4.5, w: 5, h: 0.6,
-      align: 'center', valign: 'middle',
-      fontFace: BRAND_FONT, fontSize: 14, color: 'FFFFFF', bold: true,
+      x: 0.7, y: 4.6, w: SLIDE_W - 1.4, h: 0.5,
+      fontFace: BRAND_FONT, fontSize: 14, color: 'FFFFFF',
     })
 
     // 푸터 (하단)
@@ -881,5 +840,8 @@ export function downloadBlob(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
-// STATUS_COLOR unused — reserved for future
+// 표지 단색 배경 전환으로 그라디언트 보조색은 현재 미사용 — 토큰 보존 (다른 슬라이드 확장 시 재사용)
 void STATUS_COLOR
+void COLOR_BRAND_SUB
+void COLOR_BRAND_DARK
+void COLOR_BRAND_ACCENT
