@@ -2,6 +2,9 @@
 
 이 문서는 다른 PC 에서 이 프로젝트 작업을 이어받을 때 필요한 모든 정보입니다. **이것만 보고 셋업 + 맥락 복구 가능** 하도록 작성.
 
+> 🔥 **2026-06-09 진행 중 작업**: vercel/chatbot 마이그레이션이 브랜치 `migration/vercel-chatbot` 에서 진행 중입니다 (Phase 0~3 완료, Phase 4~5 남음).
+> **다음 세션은 [docs/next-session-plan.md](next-session-plan.md) 을 먼저 읽으세요.**
+
 ---
 
 ## 🚀 빠른 시작 (다른 PC 에서)
