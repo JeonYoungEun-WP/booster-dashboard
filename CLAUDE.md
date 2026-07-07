@@ -35,18 +35,19 @@
 - Next.js 16 / React 19 / Vercel 배포 (booster-internal에서 분리된 독립 프로젝트)
 - **boosterMAX** — 광고 · 상담 · 최종 예약 **풀 퍼널** 통합 분석 SaaS
 - 주요 라우트:
-  - `/` — 대시보드 홈 (광고 시뮬 기반)
+  - `/` → `/analytics` 리다이렉트 (구 대시보드 홈은 제거됨)
   - `/analytics` → `/analytics/brand/wepick` 자동 리다이렉트
   - `/analytics/[scope]/[id]` — **스코프 분석 메인** (scope ∈ brand/project/event)
   - `/analytics/1042` (레거시) → `/analytics/event/1042` (next.config.ts redirect)
   - `/ai` — **ai MAX** 풀 퍼널 챗봇 (Gemini 2.5 Flash)
   - `/creatives` — 소재별 성과
-  - `/integrations` — 매체 연결 상태
+  - `/automation` · `/integrations` · `/settings`
   - `/api/scope-analytics` — 스코프 집계 API (브랜드/프로젝트/이벤트)
   - `/api/event-analytics` — 단일 이벤트 API (AI 내부 공유)
   - `/api/ad-chat` — ai MAX 스트림 API
-  - `/api/ga4/page-debug` — GA4 pagePath 진단
-  - `/report` — (레거시) Adriel 스타일 4페이지 리포트
+  - `/api/ad-performance` · `/api/channels/health`
+  - `/api/ga4/page-debug` — GA4 pagePath 진단 (**프로덕션은 x-debug-key 헤더 = GA4_DEBUG_KEY 필수, 미설정 시 404**)
+  - `/report` — 삭제됨 (ReportModeDialog 의 PPT·PDF·Excel 다운로드가 대체)
 
 ### ⚠️ 라우팅 주의
 Next.js 는 같은 부모 폴더에 dynamic segment 2개 공존 금지. `app/analytics/[scope]/[id]` 아래에만 dynamic 라우트 두고, 레거시 URL 은 `next.config.ts` `redirects()` 에서 처리.
@@ -161,10 +162,25 @@ Worker(Opus 서브에이전트)에게 위임하는 일:
 ## 작업 기본 방향
 - 기존 파일 수정 우선. 새 파일·문서 생성 최소화
 - 광고 매체 데이터는 `src/lib/ad-data.ts` 통해서만 접근
-- 실 매체 API 호출 분기 앞에는 반드시 `canFetchRealMediaData()` 가드
+- 실 매체 API 호출 분기 앞에는 반드시 `canFetchRealMediaData()` 가드 (인자 없음 — 요청 헤더 IP 는 위조 가능하므로 절대 신뢰하지 않는다)
 - AI 내부 데이터 공유는 **HTTP fetch 금지**, 공유 서비스 함수 직호출
 - 브랜드 컬러 변경 시 매체별 색상은 절대 덮어쓰지 말 것
-- Excel 스타일 작업은 **xlsx-js-style** (community `xlsx` 가 아님)
+- Excel 스타일 작업은 **xlsx-js-style** (community `xlsx` 가 아님 — 취약점으로 제거됨, 재설치 금지)
+
+## 공용 유틸 (중복 구현 금지)
+- **포맷**: `src/lib/format.ts` — `fmtNumber` / `fmtKRW` / `fmtKRWCompact` / `fmtRatioPct`(0~1 비율 입력) / `fmtPct`(% 값 입력) / `fmtDuration`. 컴포넌트에 로컬 fmt 함수를 새로 만들지 말 것. **fmtRatioPct 와 fmtPct 는 입력 단위가 100배 다르다.**
+- **날짜(KST)**: `src/lib/date-kst.ts` — `todayKST()` / `offsetDateKST(n)`. 서버가 UTC(Vercel)라 `toISOString().slice(0,10)` 은 KST 00~09시에 하루 밀린다 — 상대 날짜는 반드시 이 유틸 사용.
+- **API 입력 검증**: `src/lib/validate-params.ts` — `parseDateRange`(형식·순서·366일 클램프) / `parseEventId` / `parseLegacySlug`. 새 API 라우트는 반드시 적용 (무검증 날짜 범위는 DoS 벡터).
+- **채널 색상**: `src/lib/ad-data.ts` 의 `CHANNEL_COLOR` 가 정본. 로컬 복제 금지.
+
+## 테스트
+- `npm test` (vitest) — `src/lib/__tests__/`. 집계·매핑·포맷·IP가드 등 순수 함수 위주.
+- 집계 로직(scope-analytics·event-analytics)을 수정하면 관련 테스트 추가/갱신 후 통과 확인이 완료 기준.
+
+## byTrackingCode 필드 의미 (혼동 주의)
+- `reservations` = 중간 단계 (예약 / 방문예약)
+- `contracts` = 최종 단계 (계약 / 결제 · **매출 발생**)
+- ROAS 는 `contractROAS` (= contracts × AOV ÷ adSpend). 이벤트 3550 은 코드별 실측(AD_SETS H·J열)을 직접 매핑하고, 실측 없는 이벤트는 largest-remainder 분배(합계 보존)를 쓴다.
 
 ## 주요 문서
 - [`docs/PRD.md`](docs/PRD.md) — 아키텍처 · 데이터 계층 · 기능 요약 (신규)

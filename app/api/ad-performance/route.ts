@@ -10,20 +10,24 @@ import {
   getAnalyticsIntegrationStatus,
   type AdChannel,
 } from '@/src/lib/ad-data'
+import { todayKST, offsetDateKST } from '@/src/lib/date-kst'
+import { parseDateRange } from '@/src/lib/validate-params'
 
 export const maxDuration = 30
-
-function todayMinusDays(days: number): string {
-  const d = new Date()
-  d.setDate(d.getDate() - days)
-  return d.toISOString().slice(0, 10)
-}
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const view = searchParams.get('view') || 'dashboard'
-  const startDate = searchParams.get('startDate') || todayMinusDays(29)
-  const endDate = searchParams.get('endDate') || todayMinusDays(0)
+
+  // 날짜 검증 (형식·순서·최대 366일 클램프) — 무검증 DoS 차단
+  const range = parseDateRange(searchParams.get('startDate'), searchParams.get('endDate'))
+  if (!range.ok) {
+    return NextResponse.json({ error: range.error }, { status: 400 })
+  }
+  // 미지정 시 KST 기준 최근 30일 (UTC 하루 밀림 방지)
+  const startDate = range.startDate ?? offsetDateKST(29)
+  const endDate = range.endDate ?? todayKST()
+
   const channelsParam = searchParams.get('channels')
   const channels = channelsParam
     ? (channelsParam.split(',').filter(Boolean) as AdChannel[])

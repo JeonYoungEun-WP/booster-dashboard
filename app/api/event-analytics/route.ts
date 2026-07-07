@@ -18,24 +18,39 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { buildEventAnalytics } from '@/src/lib/event-analytics-service'
+import { parseEventId, parseLegacySlug, parseDateRange } from '@/src/lib/validate-params'
 
 export const maxDuration = 30
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
-  const eventId = searchParams.get('eventId')
-  if (!eventId) {
-    return NextResponse.json({ error: 'eventId required' }, { status: 400 })
+
+  // eventId 검증 (숫자 1~10자리)
+  const eventIdResult = parseEventId(searchParams.get('eventId'))
+  if (!eventIdResult.ok) {
+    return NextResponse.json({ error: eventIdResult.error }, { status: 400 })
+  }
+
+  // legacySlug 검증 (옵션 — 영숫자·하이픈·언더스코어 1~50자)
+  const legacySlugResult = parseLegacySlug(searchParams.get('legacySlug'))
+  if (!legacySlugResult.ok) {
+    return NextResponse.json({ error: legacySlugResult.error }, { status: 400 })
+  }
+
+  // 날짜 검증 (형식·순서·최대 366일 클램프) — 무검증 DoS 차단
+  const range = parseDateRange(searchParams.get('startDate'), searchParams.get('endDate'))
+  if (!range.ok) {
+    return NextResponse.json({ error: range.error }, { status: 400 })
   }
 
   try {
     const data = await buildEventAnalytics({
-      eventId,
-      legacySlug: searchParams.get('legacySlug') ?? undefined,
+      eventId: eventIdResult.eventId,
+      legacySlug: legacySlugResult.legacySlug ?? undefined,
       trackingCode: searchParams.get('trackingCode') ?? undefined,
-      startDate: searchParams.get('startDate') ?? undefined,
-      endDate: searchParams.get('endDate') ?? undefined,
+      startDate: range.startDate ?? undefined,
+      endDate: range.endDate ?? undefined,
       excludeTest: searchParams.get('excludeTest') === '1',
     })
     return NextResponse.json(data)

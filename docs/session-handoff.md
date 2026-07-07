@@ -2,6 +2,15 @@
 
 이 문서는 다른 PC 에서 이 프로젝트 작업을 이어받을 때 필요한 모든 정보입니다. **이것만 보고 셋업 + 맥락 복구 가능** 하도록 작성.
 
+> 🛠 **2026-07-07 코드 리뷰 수정 4라운드 (main)**: 전 프로젝트 리뷰 후
+> R1 보안(IP가드 헤더 신뢰 제거 · page-debug 프로덕션 가드(GA4_DEBUG_KEY) · xlsx 제거) →
+> R2 데이터 정합(트래킹코드 **계약 귀속 실데이터 매핑** — 기존엔 3550 계약 2건이 최소 세트에 몰려 ROAS 5,519% 오표시) →
+> R3 안정성(유령 페이지 `/`·`/report` 정리 · app/error.tsx · fetch race 방어 · 포맷 유틸 통합) →
+> R4 구조(KST 날짜 유틸 `date-kst.ts` · API 입력 검증 `validate-params.ts` · 보안 헤더 · vitest 테스트 32개) 완료.
+>
+> **주의**: byTrackingCode 는 `reservations`(예약)·`contracts`(계약/결제) 분리, ROAS 는 `contractROAS`.
+> 새 API 라우트는 `validate-params` 적용 필수. `migration/vercel-chatbot` 브랜치 병합 시 이 변경과의 충돌 확인 필요.
+
 ---
 
 ## 🚀 빠른 시작 (다른 PC 에서)

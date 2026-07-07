@@ -23,6 +23,7 @@
 
 import { GoogleAuth } from 'google-auth-library'
 import { getVercelOidcToken } from '@vercel/functions/oidc'
+import { todayKST } from '../date-kst'
 
 const BASE_URL = 'https://analyticsdata.googleapis.com/v1beta'
 
@@ -407,7 +408,8 @@ export async function healthCheck(): Promise<{ ok: boolean; error?: string; cred
   const credsPresent = hasGA4Creds()
   if (!credsPresent) return { ok: false, credsPresent, error: 'GA4 credentials not set (GA4_PROPERTY_ID + auth)' }
   try {
-    const today = new Date().toISOString().slice(0, 10)
+    // KST 기준 오늘 (UTC 하루 밀림 방지 — date-kst 참조)
+    const today = todayKST()
     const totals = await getTotals(today, today)
     return { ok: true, credsPresent, sessionsToday: totals.sessions }
   } catch (e) {

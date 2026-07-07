@@ -12,6 +12,7 @@
  */
 
 import { parseCampaignTag } from '../mapping'
+import { todayKST, offsetDateKST } from '../date-kst'
 
 export type LeadStatus = '접수' | '통화중' | '예약완료' | '거절' | '무응답'
 
@@ -221,8 +222,9 @@ export async function getLeadsByEvent(
   realTimestamps?: string[],
   codeWeights?: Array<{ trackingCode: string; weight: number }>,
 ): Promise<LeadRow[]> {
-  const start = startDate ?? new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10)
-  const end = endDate ?? new Date().toISOString().slice(0, 10)
+  // 기본 기간: KST 기준 최근 7일 (UTC 하루 밀림 방지 — date-kst 참조)
+  const start = startDate ?? offsetDateKST(7)
+  const end = endDate ?? todayKST()
   const dates = dateRange(start, end)
 
   const allCodes = (candidateTrackingCodes && candidateTrackingCodes.length > 0)

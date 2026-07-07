@@ -33,7 +33,7 @@ export interface ScopeAnalyticsResponse extends EventAnalyticsResponse {
 /**
  * 두 byChannel 배열을 채널 키로 합산.
  */
-function mergeByChannel(
+export function mergeByChannel(
   target: EventAnalyticsResponse['byChannel'],
   source: EventAnalyticsResponse['byChannel'],
 ): EventAnalyticsResponse['byChannel'] {
@@ -64,7 +64,7 @@ function mergeByChannel(
 /**
  * byTrackingCode 합산 — 트래킹코드 중복되면 합산 (일반적으로 이벤트 간 코드 중복 없음).
  */
-function mergeByTrackingCode(
+export function mergeByTrackingCode(
   target: EventAnalyticsResponse['byTrackingCode'],
   source: EventAnalyticsResponse['byTrackingCode'],
 ): EventAnalyticsResponse['byTrackingCode'] {
@@ -110,7 +110,7 @@ function mergeByTrackingCode(
  * leads.byDate / ga4.daily 등 일자별 시리즈 합산.
  * Key: date (YYYY-MM-DD).
  */
-function mergeDailySeries<T extends { date: string }>(
+export function mergeDailySeries<T extends { date: string }>(
   target: T[],
   source: T[],
   sumKeys: Array<keyof T>,
@@ -143,7 +143,7 @@ interface Ga4SourceRow {
   conversions: number
 }
 
-function mergeGa4BySource(target: Ga4SourceRow[], source: Ga4SourceRow[]): Ga4SourceRow[] {
+export function mergeGa4BySource(target: Ga4SourceRow[], source: Ga4SourceRow[]): Ga4SourceRow[] {
   const map = new Map<string, Ga4SourceRow>()
   const keyFor = (r: Ga4SourceRow) => `${r.source}__${r.medium}__${r.campaign}`
   for (const r of target) map.set(keyFor(r), { ...r })

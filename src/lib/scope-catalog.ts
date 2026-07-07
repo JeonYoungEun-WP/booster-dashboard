@@ -8,6 +8,8 @@
  * Phase 2: DB 연동 시 이 파일 구조 유지하고 본문만 실 쿼리로 교체
  */
 
+import { todayKST, offsetDateKST } from './date-kst'
+
 export type ScopeType = 'brand' | 'project' | 'event'
 
 export interface EventCatalog {
@@ -173,17 +175,13 @@ export function resolveBreadcrumb(scope: ScopeType, id: string): ScopeBreadcrumb
 export function defaultDateRangeForScope(scope: ScopeType, id: string): { startDate: string; endDate: string } {
   const events = getEventsForScope(scope, id)
   if (events.length === 0) {
-    const today = new Date()
-    const end = today.toISOString().slice(0, 10)
-    const start = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
-    return { startDate: start, endDate: end }
+    // KST 기준 최근 30일 (UTC 하루 밀림 방지)
+    return { startDate: offsetDateKST(30), endDate: todayKST() }
   }
   const ranges = events.map((e) => e.defaultDateRange).filter(Boolean) as Array<NonNullable<EventCatalog['defaultDateRange']>>
   if (ranges.length === 0) {
-    const today = new Date()
-    const end = today.toISOString().slice(0, 10)
-    const start = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
-    return { startDate: start, endDate: end }
+    // KST 기준 최근 30일 (UTC 하루 밀림 방지)
+    return { startDate: offsetDateKST(30), endDate: todayKST() }
   }
   const minStart = ranges.reduce((a, r) => (r.startDate < a ? r.startDate : a), ranges[0].startDate)
   const maxEnd = ranges.reduce((a, r) => (r.endDate > a ? r.endDate : a), ranges[0].endDate)

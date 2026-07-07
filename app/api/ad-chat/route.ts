@@ -12,23 +12,30 @@ import {
   type AdChannel,
 } from '@/src/lib/ad-data'
 import { buildEventAnalytics } from '@/src/lib/event-analytics-service'
+import { todayKST, offsetDateKST } from '@/src/lib/date-kst'
+import { parseDateRange } from '@/src/lib/validate-params'
 
 export const maxDuration = 120
 
-function resolveDate(d: string): string {
+/**
+ * AI 도구가 넘긴 날짜 표현을 YYYY-MM-DD 로 해석.
+ * - YYYY-MM-DD 는 그대로, today/yesterday/NdaysAgo 는 KST 기준 계산 (UTC 하루 밀림 방지).
+ * - 인식 불가 시 null 반환 → 호출부(normalize)가 KST 기본 기간으로 폴백
+ *   (기존엔 원문을 그대로 흘려 Invalid Date → 조용한 빈 배열 발생).
+ */
+function resolveDate(d: string): string | null {
   if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d
-  const now = new Date()
-  if (d === 'yesterday') { now.setDate(now.getDate() - 1); return now.toISOString().slice(0, 10) }
-  if (d === 'today') return now.toISOString().slice(0, 10)
+  if (d === 'today') return todayKST()
+  if (d === 'yesterday') return offsetDateKST(1)
   const m = d.match(/^(\d+)daysAgo$/)
-  if (m) { now.setDate(now.getDate() - parseInt(m[1])); return now.toISOString().slice(0, 10) }
-  return d
+  if (m) return offsetDateKST(parseInt(m[1]))
+  return null
 }
 
 const periodSchema = z.object({
   startDate: z.string().describe('시작일 (YYYY-MM-DD 또는 7daysAgo, 30daysAgo, yesterday)'),
   endDate: z.string().describe('종료일 (YYYY-MM-DD 또는 yesterday)'),
-  channels: z.array(z.enum(['google', 'meta', 'naver', 'kakao'])).optional().describe('조회할 채널. 미지정시 전체'),
+  channels: z.array(z.enum(['google', 'meta', 'naver', 'kakao', 'tiktok', 'karrot'])).optional().describe('조회할 채널. 미지정시 전체'),
 })
 
 const chartSchema = z.object({
@@ -72,9 +79,23 @@ const tableSchema = z.object({
 type PeriodParams = z.infer<typeof periodSchema>
 
 function normalize(p: PeriodParams) {
+  // resolveDate 실패 시 KST 오늘 기준 7daysAgo~today 로 폴백 (조용한 Invalid Date 방지)
+  const start = resolveDate(p.startDate) ?? offsetDateKST(7)
+  const end = resolveDate(p.endDate) ?? todayKST()
+
+  // 형식 검증 + 최대 366일 클램프 — 도구 경유 DoS 차단
+  const range = parseDateRange(start, end)
+  if (!range.ok || range.startDate === null || range.endDate === null) {
+    // 검증 실패(순서 역전 등)면 안전한 KST 기본 기간으로 폴백
+    return {
+      startDate: offsetDateKST(7),
+      endDate: todayKST(),
+      channels: p.channels as AdChannel[] | undefined,
+    }
+  }
   return {
-    startDate: resolveDate(p.startDate),
-    endDate: resolveDate(p.endDate),
+    startDate: range.startDate,
+    endDate: range.endDate,
     channels: p.channels as AdChannel[] | undefined,
   }
 }
@@ -124,8 +145,14 @@ async function fetchEventFunnel(
   startDate?: string,
   endDate?: string,
 ): Promise<FunnelSummary> {
+  // 도구 경유 날짜 검증 + 366일 클램프 — DoS(수백만 요소 배열) 차단.
+  // 검증 실패 시 undefined 로 두어 이벤트 기본 기간을 사용.
+  const range = parseDateRange(startDate, endDate)
+  const safeStart = range.ok ? (range.startDate ?? undefined) : undefined
+  const safeEnd = range.ok ? (range.endDate ?? undefined) : undefined
+
   // 내부 함수 직접 호출 — HTTP hop 없음 · Vercel 보호 영향 없음
-  const data = await buildEventAnalytics({ eventId, startDate, endDate })
+  const data = await buildEventAnalytics({ eventId, startDate: safeStart, endDate: safeEnd })
   const f = data.funnel
   const ga4 = data.ga4 as { simulated?: boolean; unavailable?: boolean; error?: string } | null
   const leads = data.leads as { simulated?: boolean } | null

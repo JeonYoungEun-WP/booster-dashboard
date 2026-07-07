@@ -24,6 +24,7 @@ import {
   type CampaignPerformance, type ChannelPerformance,
 } from './ad-data'
 import { buildLandingUrls, buildEventFilterPatterns, parseCampaignTag } from './mapping'
+import { offsetDateKST } from './date-kst'
 import {
   getEvent1042Campaigns,
   getEvent1042LeadDistribution,
@@ -52,10 +53,9 @@ import {
   EVENT_3550_BY_CHANNEL,
 } from './real-data/event-3550'
 
+// KST 기준 N일 전 (UTC 하루 밀림 방지 — date-kst 참조)
 function offsetDate(days: number): string {
-  const d = new Date()
-  d.setDate(d.getDate() - days)
-  return d.toISOString().slice(0, 10)
+  return offsetDateKST(days)
 }
 
 type AdapterResult<T> =
@@ -492,7 +492,7 @@ export async function buildEventAnalytics(
           daily: ga4DummyFor3550.daily,
           bySource: ga4DummyFor3550.bySource,
           simulated: true,
-          reason: 'heypick 템플릿 /tasks/19524 미추적 — 광고 클릭 기반 더미',
+          reason: 'heypick 템플릿 /tasks/11924 미추적 — 광고 클릭 기반 더미',
         }
       : ga4Result.ok
         ? (ga4Result.data

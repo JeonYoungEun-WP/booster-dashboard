@@ -1,6 +1,22 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // 전 경로 공통 보안 헤더
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          // 클릭재킹 방지 — iframe 삽입 차단
+          { key: 'X-Frame-Options', value: 'DENY' },
+          // MIME 스니핑 방지
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          // 리퍼러 최소 노출
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+        ],
+      },
+    ]
+  },
   async redirects() {
     return [
       // 레거시 이벤트 URL → 새 스코프 URL
