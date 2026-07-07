@@ -1,8 +1,11 @@
 node_modules/
 .next/
-.env
-.env.local
+.env*
+!.env.example
 .vercel
 *.tsbuildinfo
 next-env.d.ts
+.claude/settings.json
 .claude/settings.local.json
+.claude/launch.json
+drizzle/

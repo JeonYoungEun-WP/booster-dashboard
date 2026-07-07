@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { healthCheck as naverHealth } from '@/src/lib/channels/naver'
 import { healthCheck as karrotHealth } from '@/src/lib/channels/karrot'
-import { isServerOnAllowedIp, ALLOWED_MEDIA_API_IP } from '@/src/lib/ip-guard'
+import { isServerOnAllowedIp } from '@/src/lib/ip-guard'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
@@ -13,7 +13,6 @@ export async function GET() {
   ])
   return NextResponse.json({
     ipAllowed: isServerOnAllowedIp(),
-    allowedIp: ALLOWED_MEDIA_API_IP,
     naver,
     karrot,
   })

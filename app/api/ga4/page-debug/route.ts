@@ -84,6 +84,13 @@ function offsetDate(days: number): string {
 }
 
 export async function GET(req: NextRequest) {
+  // 프로덕션에서는 디버그 키 일치 시에만 접근 허용
+  if (process.env.NODE_ENV === 'production') {
+    const key = req.headers.get('x-debug-key')
+    if (!process.env.GA4_DEBUG_KEY || key !== process.env.GA4_DEBUG_KEY) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+  }
   if (!hasGA4Creds()) {
     return NextResponse.json({ error: 'GA4 creds not configured' }, { status: 503 })
   }

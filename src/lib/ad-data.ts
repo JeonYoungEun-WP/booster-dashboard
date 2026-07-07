@@ -177,8 +177,8 @@ export function getAnalyticsIntegrationStatus(): AnalyticsIntegrationStatus[] {
  * 실제 fetch 분기 앞에 반드시 이 함수를 호출하여 IP를 검증할 것.
  * 허가된 IP가 아니면 false → 호출자는 시뮬레이션 데이터로 폴백해야 함.
  */
-export function canFetchRealMediaData(req?: Request): boolean {
-  return canCallMediaApi(req)
+export function canFetchRealMediaData(): boolean {
+  return canCallMediaApi()
 }
 
 // ───────── 시뮬레이션 데이터 (실 API 미연결 시) ─────────
