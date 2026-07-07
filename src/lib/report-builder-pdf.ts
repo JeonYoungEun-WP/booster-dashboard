@@ -418,6 +418,9 @@ function renderChannelTable(data: EventAnalyticsResponse, total: number, periodL
 
 function renderTrackingCodeTable(data: EventAnalyticsResponse, total: number, periodLabel: string): HTMLDivElement {
   const codes = data.byTrackingCode.slice(0, 10)
+  const is3550 = data.eventId === '3550'
+  const reserveLabel = is3550 ? '예약' : '방문예약'
+  const contractLabel = is3550 ? '계약' : '결제'
 
   // 합계 행 (전체 byTrackingCode 기준, 상위 10 이상도 포함해서 대시보드와 동일)
   const allCodes = data.byTrackingCode
@@ -426,8 +429,9 @@ function renderTrackingCodeTable(data: EventAnalyticsResponse, total: number, pe
   const sumClicks = allCodes.reduce((s, c) => s + c.clicks, 0)
   const sumLeads = allCodes.reduce((s, c) => s + c.leads, 0)
   const sumReservations = allCodes.reduce((s, c) => s + c.reservations, 0)
+  const sumContracts = allCodes.reduce((s, c) => s + c.contracts, 0)
   const totalCpaLead = sumLeads > 0 ? sumAdSpend / sumLeads : 0
-  const totalRoasNum = allCodes.reduce((s, c) => s + c.reservationROAS * c.adSpend, 0)
+  const totalRoasNum = allCodes.reduce((s, c) => s + c.contractROAS * c.adSpend, 0)
   const totalROAS = sumAdSpend > 0 ? totalRoasNum / sumAdSpend : 0
 
   const el = createBaseSlide()
@@ -442,7 +446,8 @@ function renderTrackingCodeTable(data: EventAnalyticsResponse, total: number, pe
             <th style="padding: 14px; text-align: right; border-bottom: 2px solid ${COLOR_BORDER}; font-size: 13px; color: ${COLOR_TEXT_MUTED};">노출</th>
             <th style="padding: 14px; text-align: right; border-bottom: 2px solid ${COLOR_BORDER}; font-size: 13px; color: ${COLOR_TEXT_MUTED};">클릭</th>
             <th style="padding: 14px; text-align: right; border-bottom: 2px solid ${COLOR_BORDER}; font-size: 13px; color: ${COLOR_TEXT_MUTED};">리드</th>
-            <th style="padding: 14px; text-align: right; border-bottom: 2px solid ${COLOR_BORDER}; font-size: 13px; color: ${COLOR_TEXT_MUTED};">예약</th>
+            <th style="padding: 14px; text-align: right; border-bottom: 2px solid ${COLOR_BORDER}; font-size: 13px; color: ${COLOR_TEXT_MUTED};">${reserveLabel}</th>
+            <th style="padding: 14px; text-align: right; border-bottom: 2px solid ${COLOR_BORDER}; font-size: 13px; color: ${COLOR_TEXT_MUTED};">${contractLabel}</th>
             <th style="padding: 14px; text-align: right; border-bottom: 2px solid ${COLOR_BORDER}; font-size: 13px; color: ${COLOR_TEXT_MUTED};">CPA</th>
             <th style="padding: 14px; text-align: right; border-bottom: 2px solid ${COLOR_BORDER}; font-size: 13px; color: ${COLOR_TEXT_MUTED};">ROAS</th>
           </tr>
@@ -456,6 +461,7 @@ function renderTrackingCodeTable(data: EventAnalyticsResponse, total: number, pe
             <td style="padding: 12px 14px; border-bottom: 2px solid ${COLOR_BORDER}; text-align: right;">${fmtNumber(sumClicks)}</td>
             <td style="padding: 12px 14px; border-bottom: 2px solid ${COLOR_BORDER}; text-align: right;">${fmtNumber(sumLeads)}</td>
             <td style="padding: 12px 14px; border-bottom: 2px solid ${COLOR_BORDER}; text-align: right;">${fmtNumber(sumReservations)}</td>
+            <td style="padding: 12px 14px; border-bottom: 2px solid ${COLOR_BORDER}; text-align: right;">${fmtNumber(sumContracts)}</td>
             <td style="padding: 12px 14px; border-bottom: 2px solid ${COLOR_BORDER}; text-align: right;">${totalCpaLead > 0 ? fmtKRW(totalCpaLead) : '—'}</td>
             <td style="padding: 12px 14px; border-bottom: 2px solid ${COLOR_BORDER}; text-align: right; color: ${totalROAS >= 1 ? COLOR_SUCCESS : COLOR_WARN};">${fmtPct(totalROAS)}</td>
           </tr>
@@ -467,8 +473,9 @@ function renderTrackingCodeTable(data: EventAnalyticsResponse, total: number, pe
               <td style="padding: 11px 14px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right;">${fmtNumber(c.clicks)}</td>
               <td style="padding: 11px 14px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right;">${fmtNumber(c.leads)}</td>
               <td style="padding: 11px 14px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right;">${fmtNumber(c.reservations)}</td>
+              <td style="padding: 11px 14px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right;">${fmtNumber(c.contracts)}</td>
               <td style="padding: 11px 14px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right;">${c.cpa_lead > 0 ? fmtKRW(c.cpa_lead) : '—'}</td>
-              <td style="padding: 11px 14px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right; font-weight: 700; color: ${c.reservationROAS >= 1 ? COLOR_SUCCESS : COLOR_WARN};">${fmtPct(c.reservationROAS)}</td>
+              <td style="padding: 11px 14px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right; font-weight: 700; color: ${c.contractROAS >= 1 ? COLOR_SUCCESS : COLOR_WARN};">${fmtPct(c.contractROAS)}</td>
             </tr>
           `).join('')}
         </tbody>
@@ -701,7 +708,7 @@ function renderActionItems(data: EventAnalyticsResponse, total: number, periodLa
       ? `최고 채널: ${CHANNEL_KO[topChannel.channel] ?? topChannel.channel} (ROAS ${fmtPct(topChannel.roas)}) → 예산 비중 확대 고려`
       : '채널별 비교 데이터 없음',
     topCode
-      ? `최고 광고세트: ${topCode.trackingCode} — 광고비 ${fmtKRW(topCode.adSpend)} / ROAS ${fmtPct(topCode.reservationROAS)}`
+      ? `최고 광고세트: ${topCode.trackingCode} — 광고비 ${fmtKRW(topCode.adSpend)} / ROAS ${fmtPct(topCode.contractROAS)}`
       : '광고세트 데이터 없음',
     `리드 → 예약 전환율 ${fmtPct(f.cvr_lead_to_visitReservation)} · 예약 → 계약 전환율 ${fmtPct(f.cvr_visitReservation_to_payment)}`,
     '[편집] 다음 스프린트 구체 액션 3개를 여기에 기재하세요.',

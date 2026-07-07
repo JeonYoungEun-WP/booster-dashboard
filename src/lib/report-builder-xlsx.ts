@@ -316,8 +316,10 @@ export function buildReportXlsx({ data, generatedAt = new Date().toISOString() }
         headerCell('클릭'),
         headerCell('리드'),
         headerCell(reserveLabel),
+        headerCell(contractLabel),
         headerCell('CPA\n(리드)'),
         headerCell(`${reserveLabel}당\n단가`),
+        headerCell(`${contractLabel}당\n단가`),
         headerCell('ROAS'),
       ],
     ]
@@ -339,17 +341,19 @@ export function buildReportXlsx({ data, generatedAt = new Date().toISOString() }
         numCell(c.clicks, FMT_NUMBER, { bg }),
         numCell(c.leads, FMT_NUMBER, { bold: true, bg }),
         numCell(c.reservations, FMT_NUMBER, { bg }),
+        numCell(c.contracts, FMT_NUMBER, { bg }),
         c.cpa_lead > 0 ? currencyCell(Math.round(c.cpa_lead), { bg }) : numCell('—', FMT_NUMBER, { bg }),
         c.costPerReservation > 0 ? currencyCell(Math.round(c.costPerReservation), { bg }) : numCell('—', FMT_NUMBER, { bg }),
-        roasCell(c.reservationROAS, { bg }),
+        c.costPerContract > 0 ? currencyCell(Math.round(c.costPerContract), { bg }) : numCell('—', FMT_NUMBER, { bg }),
+        roasCell(c.contractROAS, { bg }),
       ])
     })
     // 합계
     const sum = codes.reduce((a, c) => ({
       adSpend: a.adSpend + c.adSpend, imp: a.imp + c.impressions, clk: a.clk + c.clicks,
-      leads: a.leads + c.leads, rsv: a.rsv + c.reservations,
-    }), { adSpend: 0, imp: 0, clk: 0, leads: 0, rsv: 0 })
-    const totalRoasNum = codes.reduce((s, c) => s + c.reservationROAS * c.adSpend, 0)
+      leads: a.leads + c.leads, rsv: a.rsv + c.reservations, ctr: a.ctr + c.contracts,
+    }), { adSpend: 0, imp: 0, clk: 0, leads: 0, rsv: 0, ctr: 0 })
+    const totalRoasNum = codes.reduce((s, c) => s + c.contractROAS * c.adSpend, 0)
     const totalRoas = sum.adSpend > 0 ? totalRoasNum / sum.adSpend : 0
     const bg = COLOR_BRAND_LIGHT
     aoa.push([
@@ -359,14 +363,16 @@ export function buildReportXlsx({ data, generatedAt = new Date().toISOString() }
       numCell(sum.clk, FMT_NUMBER, { bold: true, bg }),
       numCell(sum.leads, FMT_NUMBER, { bold: true, bg }),
       numCell(sum.rsv, FMT_NUMBER, { bold: true, bg }),
+      numCell(sum.ctr, FMT_NUMBER, { bold: true, bg }),
       sum.leads > 0 ? currencyCell(Math.round(sum.adSpend / sum.leads), { bold: true, bg }) : numCell('—', FMT_NUMBER, { bold: true, bg }),
       sum.rsv > 0 ? currencyCell(Math.round(sum.adSpend / sum.rsv), { bold: true, bg }) : numCell('—', FMT_NUMBER, { bold: true, bg }),
+      sum.ctr > 0 ? currencyCell(Math.round(sum.adSpend / sum.ctr), { bold: true, bg }) : numCell('—', FMT_NUMBER, { bold: true, bg }),
       roasCell(totalRoas, { bold: true, bg }),
     ])
 
-    const ws = aoaToStyledSheet(aoa, [18, 14, 12, 10, 9, 10, 12, 14, 11])
+    const ws = aoaToStyledSheet(aoa, [18, 14, 12, 10, 9, 10, 10, 12, 14, 14, 11])
     ws['!rows'] = [{ hpt: 32 }]
-    ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { c: 0, r: 0 }, e: { c: 8, r: 0 } }) }
+    ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { c: 0, r: 0 }, e: { c: 10, r: 0 } }) }
     XLSX.utils.book_append_sheet(wb, ws, '광고세트')
   }
 

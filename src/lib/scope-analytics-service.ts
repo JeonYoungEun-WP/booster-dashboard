@@ -69,8 +69,20 @@ function mergeByTrackingCode(
   source: EventAnalyticsResponse['byTrackingCode'],
 ): EventAnalyticsResponse['byTrackingCode'] {
   const map = new Map<string, EventAnalyticsResponse['byTrackingCode'][0]>()
-  for (const row of target) map.set(row.trackingCode, { ...row })
+  // 이벤트별 AOV 정보가 병합 시점에 없으므로 각 행의 매출을 contractROAS × adSpend 로 역산해 누적.
+  const revenueByCode = new Map<string, number>()
+  const accumulate = (row: EventAnalyticsResponse['byTrackingCode'][0]) => {
+    revenueByCode.set(
+      row.trackingCode,
+      (revenueByCode.get(row.trackingCode) ?? 0) + row.contractROAS * row.adSpend,
+    )
+  }
+  for (const row of target) {
+    map.set(row.trackingCode, { ...row })
+    accumulate(row)
+  }
   for (const row of source) {
+    accumulate(row)
     const existing = map.get(row.trackingCode)
     if (!existing) {
       map.set(row.trackingCode, { ...row })
@@ -81,13 +93,15 @@ function mergeByTrackingCode(
     existing.clicks += row.clicks
     existing.leads += row.leads
     existing.reservations += row.reservations
-    existing.cpa_lead = existing.leads > 0 ? existing.adSpend / existing.leads : 0
-    existing.costPerReservation = existing.reservations > 0 ? existing.adSpend / existing.reservations : 0
-    // ROAS 는 기존 값 평균이 아닌, 새 adSpend/revenue 로 재계산해야 하나 revenue 가 여기 없음 → 가중 평균 유지
-    const totalSpend = (existing.adSpend || 1)
-    existing.reservationROAS =
-      ((target.find((t) => t.trackingCode === row.trackingCode)?.reservationROAS ?? 0) * (totalSpend - row.adSpend) +
-        row.reservationROAS * row.adSpend) / totalSpend
+    existing.contracts += row.contracts
+  }
+  // 합산 후 파생 지표 재계산 (매출 = 역산 누적치 / ROAS = 매출 ÷ 광고비).
+  for (const row of map.values()) {
+    const revenue = revenueByCode.get(row.trackingCode) ?? 0
+    row.cpa_lead = row.leads > 0 ? row.adSpend / row.leads : 0
+    row.costPerReservation = row.reservations > 0 ? row.adSpend / row.reservations : 0
+    row.costPerContract = row.contracts > 0 ? row.adSpend / row.contracts : 0
+    row.contractROAS = row.adSpend > 0 ? revenue / row.adSpend : 0
   }
   return Array.from(map.values()).sort((a, b) => b.adSpend - a.adSpend)
 }

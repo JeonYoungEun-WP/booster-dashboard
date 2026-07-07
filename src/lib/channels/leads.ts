@@ -123,6 +123,32 @@ function dailyLeadCount(eventId: string, date: string, sessionCount?: number): n
 // ───── 공개 API ─────
 
 /**
+ * 총량 `total` 을 가중치 배열에 largest-remainder 방식으로 분배.
+ * floor 후 소수부가 큰 순서로 +1 씩 배정 — 합이 정확히 `total` 이 되고 음수·초과 없음.
+ * 반환: weights 와 같은 길이의 정수 배열.
+ */
+function largestRemainderAllocate(total: number, weights: number[]): number[] {
+  const n = weights.length
+  if (n === 0) return []
+  if (total <= 0) return weights.map(() => 0)
+  const totalWeight = weights.reduce((s, w) => s + Math.max(0, w), 0)
+  if (totalWeight <= 0) {
+    // 가중치 정보가 없으면 첫 항목에 전량 배정 (합 보존)
+    return weights.map((_, i) => (i === 0 ? total : 0))
+  }
+  const floats = weights.map((w) => (total * Math.max(0, w)) / totalWeight)
+  const floors = floats.map(Math.floor)
+  const sum = floors.reduce((s, v) => s + v, 0)
+  let remainder = total - sum
+  const order = weights
+    .map((_, i) => i)
+    .sort((a, b) => (floats[b] - floors[b]) - (floats[a] - floors[a]))
+  const result = [...floors]
+  for (let i = 0; i < remainder && i < order.length; i++) result[order[i]] += 1
+  return result
+}
+
+/**
  * 총량 `total` 을 주어진 날짜 배열에 **주말 가중치 10%** 로 분배.
  * - 주중(월~금): weight 1.0 + ±15% 시드 변동
  * - 주말(토·일): weight 0.1 + ±15% 시드 변동
@@ -180,6 +206,8 @@ function distributeWithWeekendFactor(
  *   주어지면 예약완료 상태를 N건만 할당 (주말 가중치 분배, 리드 집합 부분집합).
  * @param realTimestamps - 실제 리드 발생 타임스탬프 배열 ('YYYY-MM-DD HH:MM:SS' 형식).
  *   주어지면 overrideTotalLeads 대신 이 타임스탬프들을 그대로 사용 (가장 정확).
+ * @param codeWeights - 트래킹코드별 리드 비중. 주어지면 시드 기반 균등 분배 대신
+ *   weight 비례 largest-remainder 로 리드 총수를 코드에 배정 (실 광고세트 리드 편차 반영).
  */
 export async function getLeadsByEvent(
   eventId: string,
@@ -191,6 +219,7 @@ export async function getLeadsByEvent(
   overrideTotalLeads?: number,
   overrideTotalReservations?: number,
   realTimestamps?: string[],
+  codeWeights?: Array<{ trackingCode: string; weight: number }>,
 ): Promise<LeadRow[]> {
   const start = startDate ?? new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10)
   const end = endDate ?? new Date().toISOString().slice(0, 10)
@@ -222,6 +251,27 @@ export async function getLeadsByEvent(
   const overrideReservationsDaily: Record<string, number> = overrideTotalReservations !== undefined
     ? distributeWithWeekendFactor(overrideTotalReservations, dates, `res-${eventId}`)
     : {}
+
+  // codeWeights 제공 시: 총 리드 수를 코드별 weight 비례로 largest-remainder 배정 후
+  // 남은 할당량(quota)을 소진하는 방식으로 리드에 코드를 붙임 (균등 분배 대체).
+  // 특정 trackingCode 로 좁힌 경우엔 그 코드로만 생성되므로 quota 불필요.
+  let codeQuota: Map<string, number> | null = null
+  if (!trackingCode && codeWeights && codeWeights.length > 0) {
+    // 이 함수가 생성할 총 리드 수 = 각 날짜 count 합
+    const totalLeadCount = dates.reduce((s, date) => {
+      const realTs = timestampsByDate?.[date] ?? []
+      return s + (timestampsByDate
+        ? realTs.length
+        : overrideTotalLeads !== undefined
+          ? (overrideLeadsDaily[date] ?? 0)
+          : dailyLeadCount(eventId, date, sessionByDate?.[date]))
+    }, 0)
+    // 실제 생성 코드(codes)에 존재하는 weight 만 사용 (순서 = codes 순서로 정렬)
+    const weightByCode = new Map(codeWeights.map((w) => [w.trackingCode, w.weight]))
+    const orderedWeights = codes.map((c) => weightByCode.get(c) ?? 0)
+    const alloc = largestRemainderAllocate(totalLeadCount, orderedWeights)
+    codeQuota = new Map(codes.map((c, i) => [c, alloc[i]]))
+  }
 
   const leads: LeadRow[] = []
   let idCounter = 0
@@ -265,8 +315,19 @@ export async function getLeadsByEvent(
       } else {
         status = pickStatus(sStatus)
       }
-      const codeIdx = Math.floor(sCode * codes.length)
-      const code = codes[Math.min(codeIdx, codes.length - 1)]
+      // 코드 할당: codeQuota 있으면 남은 quota 가 있는 코드 중 시드로 선택 (합 = 배정량 정확),
+      // 없으면 기존 시드 기반 균등 선택.
+      let code: string
+      if (codeQuota) {
+        const available = codes.filter((c) => (codeQuota!.get(c) ?? 0) > 0)
+        const pool = available.length > 0 ? available : codes
+        const idx = Math.min(Math.floor(sCode * pool.length), pool.length - 1)
+        code = pool[idx]
+        if (codeQuota.has(code)) codeQuota.set(code, (codeQuota.get(code) ?? 0) - 1)
+      } else {
+        const codeIdx = Math.floor(sCode * codes.length)
+        code = codes[Math.min(codeIdx, codes.length - 1)]
+      }
       const source = SOURCE_POOL[Math.floor(sSource * SOURCE_POOL.length)]
 
       // 전화번호 더미: 010-????-****
@@ -323,10 +384,11 @@ export async function getReservationStats(
   overrideTotalLeads?: number,
   overrideTotalReservations?: number,
   realTimestamps?: string[],
+  codeWeights?: Array<{ trackingCode: string; weight: number }>,
 ): Promise<ReservationStats> {
   const leads = await getLeadsByEvent(
     eventId, trackingCode, startDate, endDate, sessionByDate, candidateTrackingCodes,
-    overrideTotalLeads, overrideTotalReservations, realTimestamps,
+    overrideTotalLeads, overrideTotalReservations, realTimestamps, codeWeights,
   )
 
   const byStatusMap = new Map<LeadStatus, number>()

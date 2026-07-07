@@ -668,6 +668,9 @@ export async function buildReportPptx({
   {
     const slide = pptx.addSlide()
     const codes = data.byTrackingCode.slice(0, 10)
+    const is3550 = data.eventId === '3550'
+    const reserveLabel = is3550 ? '예약' : '방문예약'
+    const contractLabel = is3550 ? '계약' : '결제'
     addTitle(slide, '광고세트별 성과', `트래킹코드 상위 ${codes.length}개 · 광고비 내림차순`)
 
     const tableData: PptxGenJS.TableRow[] = [
@@ -677,7 +680,8 @@ export async function buildReportPptx({
         { text: '노출', options: { bold: true, fill: { color: COLOR_BG_LIGHT }, align: 'right' } },
         { text: '클릭', options: { bold: true, fill: { color: COLOR_BG_LIGHT }, align: 'right' } },
         { text: '리드', options: { bold: true, fill: { color: COLOR_BG_LIGHT }, align: 'right' } },
-        { text: '예약', options: { bold: true, fill: { color: COLOR_BG_LIGHT }, align: 'right' } },
+        { text: reserveLabel, options: { bold: true, fill: { color: COLOR_BG_LIGHT }, align: 'right' } },
+        { text: contractLabel, options: { bold: true, fill: { color: COLOR_BG_LIGHT }, align: 'right' } },
         { text: 'CPA', options: { bold: true, fill: { color: COLOR_BG_LIGHT }, align: 'right' } },
         { text: 'ROAS', options: { bold: true, fill: { color: COLOR_BG_LIGHT }, align: 'right' } },
       ],
@@ -688,12 +692,13 @@ export async function buildReportPptx({
         { text: fmtNumber(c.clicks), options: { align: 'right' } },
         { text: fmtNumber(c.leads), options: { align: 'right' } },
         { text: fmtNumber(c.reservations), options: { align: 'right' } },
+        { text: fmtNumber(c.contracts), options: { align: 'right' } },
         { text: c.cpa_lead > 0 ? fmtKRW(c.cpa_lead) : '—', options: { align: 'right' } },
         {
-          text: fmtPct(c.reservationROAS),
+          text: fmtPct(c.contractROAS),
           options: {
             align: 'right',
-            color: c.reservationROAS >= 1 ? COLOR_SUCCESS : COLOR_WARN,
+            color: c.contractROAS >= 1 ? COLOR_SUCCESS : COLOR_WARN,
             bold: true,
           },
         },
@@ -701,7 +706,7 @@ export async function buildReportPptx({
     ]
 
     slide.addTable(tableData, {
-      x: 0.3, y: 1.8, w: SLIDE_W - 0.6, colW: [2.3, 1.5, 1.3, 1.3, 1.3, 1.3, 1.5, 1.2],
+      x: 0.3, y: 1.8, w: SLIDE_W - 0.6, colW: [2.0, 1.5, 1.3, 1.3, 1.1, 1.1, 1.1, 1.1, 1.2],
       fontFace: BRAND_FONT, fontSize: 11,
       border: { type: 'solid', color: COLOR_BORDER, pt: 0.5 },
     })
@@ -851,7 +856,7 @@ export async function buildReportPptx({
         ? `최고 채널: ${CHANNEL_KO[topChannel.channel] ?? topChannel.channel} (ROAS ${fmtPct(topChannel.roas)}) → 예산 비중 확대 고려`
         : '채널별 비교 데이터 없음',
       topCode
-        ? `최고 광고세트: ${topCode.trackingCode} — 광고비 ${fmtKRW(topCode.adSpend)} / ROAS ${fmtPct(topCode.reservationROAS)}`
+        ? `최고 광고세트: ${topCode.trackingCode} — 광고비 ${fmtKRW(topCode.adSpend)} / ROAS ${fmtPct(topCode.contractROAS)}`
         : '광고세트 데이터 없음',
       `리드 → 예약 전환율 ${fmtPct(f.cvr_lead_to_visitReservation)} · 예약 → 계약 전환율 ${fmtPct(f.cvr_visitReservation_to_payment)}`,
       '[편집] 다음 스프린트 구체 액션 3개를 여기에 기재하세요.',

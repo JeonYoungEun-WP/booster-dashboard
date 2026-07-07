@@ -26,6 +26,7 @@ import {
 import { buildLandingUrls, buildEventFilterPatterns, parseCampaignTag } from './mapping'
 import {
   getEvent1042Campaigns,
+  getEvent1042LeadDistribution,
   EVENT_1042_LEAD_TOTAL,
   EVENT_1042_PERIOD,
   EVENT_1042_TOTALS,
@@ -36,10 +37,13 @@ import {
 import {
   getEvent3550Campaigns,
   getEvent3550Ga4Dummy,
+  getEvent3550LeadDistribution,
+  getEvent3550TrackingCodePerformance,
   EVENT_3550_LEAD_TOTAL,
   EVENT_3550_PERIOD,
   EVENT_3550_TOTALS,
   EVENT_3550_REVENUE,
+  EVENT_3550_RESERVATION_COUNT,
   EVENT_3550_TEMPLATE_PATHS,
   EVENT_3550_LEAD_TIMESTAMPS,
   EVENT_3550_LEGACY_SLUG,
@@ -61,6 +65,29 @@ type AdapterResult<T> =
 function settled<T>(r: PromiseSettledResult<T>): AdapterResult<T> {
   if (r.status === 'fulfilled') return { ok: true, data: r.value }
   return { ok: false, error: (r.reason as Error)?.message ?? String(r.reason) }
+}
+
+/**
+ * 총량 `total` 을 가중치 배열에 largest-remainder 방식으로 분배.
+ * floor 후 소수부가 큰 순서로 +1 씩 배정 — 합 보존, 음수·초과 없음.
+ * 반환: weights 와 같은 길이의 정수 배열.
+ */
+function largestRemainderAllocate(total: number, weights: number[]): number[] {
+  const n = weights.length
+  if (n === 0) return []
+  if (total <= 0) return weights.map(() => 0)
+  const totalWeight = weights.reduce((s, w) => s + Math.max(0, w), 0)
+  if (totalWeight <= 0) return weights.map((_, i) => (i === 0 ? total : 0))
+  const floats = weights.map((w) => (total * Math.max(0, w)) / totalWeight)
+  const floors = floats.map(Math.floor)
+  const sum = floors.reduce((s, v) => s + v, 0)
+  const remainder = total - sum
+  const order = weights
+    .map((_, i) => i)
+    .sort((a, b) => (floats[b] - floors[b]) - (floats[a] - floors[a]))
+  const result = [...floors]
+  for (let i = 0; i < remainder && i < order.length; i++) result[order[i]] += 1
+  return result
 }
 
 export interface EventAnalyticsParams {
@@ -122,10 +149,12 @@ export interface EventAnalyticsResponse {
     impressions: number
     clicks: number
     leads: number
-    reservations: number
+    reservations: number       // 중간 단계 (예약 / 방문예약)
+    contracts: number          // 최종 단계 (계약 / 결제 · 매출 발생)
     cpa_lead: number
-    costPerReservation: number
-    reservationROAS: number
+    costPerReservation: number // 예약 1건당 광고비
+    costPerContract: number    // 계약(결제) 1건당 광고비
+    contractROAS: number       // 계약 매출 ÷ 광고비 (contracts × AOV / adSpend)
   }>
   ga4: unknown
   clarity: unknown
@@ -226,13 +255,22 @@ export async function buildEventAnalytics(
     new Set(eventCampaigns.map((c) => c.tag?.trackingCode).filter(Boolean) as string[]),
   )
 
+  // 예약 총수(leads.reservationCount 및 byDate 합) 의 의미:
+  //   - 1042: 결제 13 (byDate·reservationCount 모두 결제 기준, 실 방문예약 타임스탬프 미제공)
+  //   - 3550: 예약 27 (byDate 는 EVENT_3550_RESERVATIONS_BY_DATE 로 덮어써 합 27 → reservationCount 도 27 로 정합)
+  //     계약 2 는 funnel.reservations · byTrackingCode.contracts 로만 표현.
   const overrideReservationTotal = eventId === '1042'
     ? EVENT_1042_REVENUE.reservationCount
     : eventId === '3550'
-      ? EVENT_3550_REVENUE.reservationCount
+      ? EVENT_3550_RESERVATION_COUNT
       : undefined
   const realTimestamps = eventId === '1042' ? EVENT_1042_LEAD_TIMESTAMPS
     : eventId === '3550' ? EVENT_3550_LEAD_TIMESTAMPS
+    : undefined
+
+  // 리드 비중 분배 — 코드별 실측 conversions 비중으로 리드를 배정 (균등 분배 대체, 버그 C).
+  const codeWeights = eventId === '1042' ? getEvent1042LeadDistribution().map((d) => ({ trackingCode: d.trackingCode, weight: d.weight }))
+    : eventId === '3550' ? getEvent3550LeadDistribution().map((d) => ({ trackingCode: d.trackingCode, weight: d.weight }))
     : undefined
 
   let leadsResult: AdapterResult<ReservationStats>
@@ -243,6 +281,7 @@ export async function buildEventAnalytics(
       overrideLeadTotal ?? undefined,
       overrideReservationTotal,
       realTimestamps,
+      codeWeights,
     )
     leadsResult = { ok: true, data: stats }
   } catch (e) {
@@ -260,6 +299,9 @@ export async function buildEventAnalytics(
       leads: EVENT_3550_LEADS_BY_DATE[date] ?? 0,
       reservations: EVENT_3550_RESERVATIONS_BY_DATE[date] ?? 0,
     }))
+    // reservationCount 도 byDate 합(=예약 실측 27)으로 정합.
+    // (leads 어댑터의 주말가중 분배는 날짜별 리드수 상한에 걸려 27 미달이 될 수 있어 실측으로 덮어씀)
+    leadsResult.data.reservationCount = leadsResult.data.byDate.reduce((s, d) => s + d.reservations, 0)
   }
 
   // 퍼널 수치
@@ -314,11 +356,12 @@ export async function buildEventAnalytics(
     impressions: number
     clicks: number
     leads: number
-    reservations: number
+    reservations: number       // 중간 단계 (예약 / 방문예약)
+    contracts: number          // 최종 단계 (계약 / 결제 · 매출 발생)
   }>()
   for (const c of eventCampaigns) {
     const code = c.tag!.trackingCode
-    const prev = codeMap.get(code) ?? { trackingCode: code, adSpend: 0, impressions: 0, clicks: 0, leads: 0, reservations: 0 }
+    const prev = codeMap.get(code) ?? { trackingCode: code, adSpend: 0, impressions: 0, clicks: 0, leads: 0, reservations: 0, contracts: 0 }
     codeMap.set(code, {
       ...prev,
       adSpend: prev.adSpend + c.cost,
@@ -329,7 +372,7 @@ export async function buildEventAnalytics(
   if (leadsResult.ok) {
     for (const row of leadsResult.data.byTrackingCode) {
       const prev = codeMap.get(row.trackingCode) ?? {
-        trackingCode: row.trackingCode, adSpend: 0, impressions: 0, clicks: 0, leads: 0, reservations: 0,
+        trackingCode: row.trackingCode, adSpend: 0, impressions: 0, clicks: 0, leads: 0, reservations: 0, contracts: 0,
       }
       codeMap.set(row.trackingCode, {
         ...prev,
@@ -338,25 +381,35 @@ export async function buildEventAnalytics(
       })
     }
   }
-  if (eventId === '1042' || eventId === '3550') {
-    const entries = Array.from(codeMap.values())
-    const totalLeadsByCode = entries.reduce((s, e) => s + e.leads, 0)
-    const targetReservations = eventId === '1042'
-      ? EVENT_1042_REVENUE.reservationCount
-      : EVENT_3550_REVENUE.reservationCount
-    if (totalLeadsByCode > 0) {
-      let allocated = 0
-      const sortedByLeads = [...entries].sort((a, b) => b.leads - a.leads)
-      for (let i = 0; i < sortedByLeads.length; i++) {
-        const row = sortedByLeads[i]
-        const isLast = i === sortedByLeads.length - 1
-        const alloc = isLast
-          ? targetReservations - allocated
-          : Math.round((row.leads / totalLeadsByCode) * targetReservations)
-        row.reservations = Math.max(0, alloc)
-        allocated += row.reservations
+  // 코드별 예약·계약 확정:
+  //   - 3550: 엑셀 상세 14행 실측(leads·예약·계약)을 코드별로 직접 덮어씀
+  //     (codeMap 에 없으면 생성; adSpend·노출·클릭은 캠페인 쪽 값 유지)
+  //   - 1042: 코드별 실측 없음 → largest-remainder 로 총 예약 41 / 총 계약 13 을 leads 비중 분배
+  //   - 일반: leads 어댑터의 예약완료 수(reservations) 유지, 계약은 실측 구분이 없어 예약과 동일 처리
+  if (eventId === '3550') {
+    for (const perf of getEvent3550TrackingCodePerformance()) {
+      const prev = codeMap.get(perf.trackingCode) ?? {
+        trackingCode: perf.trackingCode, adSpend: 0, impressions: 0, clicks: 0, leads: 0, reservations: 0, contracts: 0,
       }
+      codeMap.set(perf.trackingCode, {
+        ...prev,
+        leads: perf.leads,
+        reservations: perf.reservations,
+        contracts: perf.contracts,
+      })
     }
+  } else if (eventId === '1042') {
+    const entries = Array.from(codeMap.values())
+    const leadWeights = entries.map((e) => e.leads)
+    const resAlloc = largestRemainderAllocate(EVENT_1042_REVENUE.visitReservationCount, leadWeights)
+    const contractAlloc = largestRemainderAllocate(EVENT_1042_REVENUE.reservationCount, leadWeights)
+    entries.forEach((e, i) => {
+      e.reservations = resAlloc[i]
+      e.contracts = contractAlloc[i]
+    })
+  } else {
+    // 더미 데이터라 예약/계약 실측 구분이 없어 계약 = 예약(예약완료 상태 수)
+    for (const e of codeMap.values()) e.contracts = e.reservations
   }
 
   const byTrackingCode = Array.from(codeMap.values())
@@ -364,7 +417,8 @@ export async function buildEventAnalytics(
       ...r,
       cpa_lead: r.leads > 0 ? r.adSpend / r.leads : 0,
       costPerReservation: r.reservations > 0 ? r.adSpend / r.reservations : 0,
-      reservationROAS: r.adSpend > 0 ? (r.reservations * averageOrderValue) / r.adSpend : 0,
+      costPerContract: r.contracts > 0 ? r.adSpend / r.contracts : 0,
+      contractROAS: r.adSpend > 0 ? (r.contracts * averageOrderValue) / r.adSpend : 0,
     }))
     .sort((a, b) => b.adSpend - a.adSpend)
 

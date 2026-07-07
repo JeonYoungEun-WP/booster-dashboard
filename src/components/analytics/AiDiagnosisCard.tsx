@@ -21,7 +21,8 @@ interface TrackingCodeRow {
   adSpend: number
   leads: number
   reservations: number
-  reservationROAS: number
+  contracts: number
+  contractROAS: number
 }
 
 interface Funnel {
@@ -97,10 +98,10 @@ function buildDiagnosisBullets({
 
   // 3) Best 광고세트 — ROAS 기준 (최소 리드 1건 이상)
   const validCodes = byTrackingCode.filter((c) => c.leads > 0)
-  const bestCode = validCodes.sort((a, b) => b.reservationROAS - a.reservationROAS)[0]
+  const bestCode = validCodes.sort((a, b) => b.contractROAS - a.contractROAS)[0]
   if (bestCode) {
     bullets.push(
-      `Best 광고세트: '${bestCode.trackingCode}'가 ${fmtKRW(bestCode.adSpend)} 광고비로 리드 ${fmtNumber(bestCode.leads)}건, 예약 ${fmtNumber(bestCode.reservations)}건 달성 (ROAS ${fmtPct(bestCode.reservationROAS)}).`,
+      `Best 광고세트: '${bestCode.trackingCode}'가 ${fmtKRW(bestCode.adSpend)} 광고비로 리드 ${fmtNumber(bestCode.leads)}건, 예약 ${fmtNumber(bestCode.reservations)}건, 계약 ${fmtNumber(bestCode.contracts)}건 달성 (ROAS ${fmtPct(bestCode.contractROAS)}).`,
     )
   } else {
     bullets.push('Best 광고세트: 유효 리드 발생 광고세트 없음.')
@@ -120,8 +121,8 @@ function buildDiagnosisBullets({
   } else {
     // 다음 Fallback — 리드는 있지만 ROAS 0
     const lowRoas = byTrackingCode
-      .filter((c) => c.adSpend > 0 && c.reservationROAS < 0.3)
-      .sort((a, b) => a.reservationROAS - b.reservationROAS)
+      .filter((c) => c.adSpend > 0 && c.contractROAS < 0.3)
+      .sort((a, b) => a.contractROAS - b.contractROAS)
       .slice(0, 3)
     if (lowRoas.length > 0) {
       const codeNames = lowRoas.map((c) => `'${c.trackingCode}'`).join(', ')

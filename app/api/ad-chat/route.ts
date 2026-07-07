@@ -109,8 +109,8 @@ interface FunnelSummary {
   }>
   topTrackingCodes: Array<{
     trackingCode: string; adSpend: number; clicks: number
-    leads: number; reservations: number
-    cpa_lead: number; reservationROAS: number
+    leads: number; reservations: number; contracts: number
+    cpa_lead: number; contractROAS: number
   }>
   dataSources: {
     ga4: string   // 'real' | 'dummy' | 'unavailable'
@@ -176,8 +176,9 @@ async function fetchEventFunnel(
       clicks: t.clicks as number,
       leads: t.leads as number,
       reservations: t.reservations as number,
+      contracts: t.contracts as number,
       cpa_lead: t.cpa_lead as number,
-      reservationROAS: t.reservationROAS as number,
+      contractROAS: t.contractROAS as number,
     })),
     dataSources: {
       ga4: ga4?.simulated ? 'dummy (광고주 엑셀 기반)'
@@ -202,12 +203,23 @@ export async function POST(req: Request) {
 
   const body = await req.json()
   const rawMessages = (body.messages || []) as Array<Record<string, unknown>>
-  const messages = rawMessages.map((msg) => {
-    if (msg.content) return { role: msg.role as string, content: String(msg.content) }
-    const parts = msg.parts as Array<{ type: string; text?: string }> | undefined
-    const text = parts?.filter(p => p.type === 'text').map(p => p.text).join('') || ''
-    return { role: msg.role as string, content: text }
-  }) as NonNullable<Parameters<typeof streamText>[0]['messages']>
+  const messages = rawMessages
+    // role 화이트리스트 — user/assistant 외의 role(system 등) 주입 차단
+    .filter((msg) => msg.role === 'user' || msg.role === 'assistant')
+    .map((msg) => {
+      if (msg.content) return { role: msg.role as string, content: String(msg.content) }
+      const parts = msg.parts as Array<{ type: string; text?: string }> | undefined
+      const text = parts?.filter(p => p.type === 'text').map(p => p.text).join('') || ''
+      return { role: msg.role as string, content: text }
+    }) as NonNullable<Parameters<typeof streamText>[0]['messages']>
+
+  // 필터링 후 유효한 메시지가 없으면 요청 거부
+  if (messages.length === 0) {
+    return new Response(
+      JSON.stringify({ error: '유효한 메시지가 없습니다.' }),
+      { status: 400, headers: { 'content-type': 'application/json' } },
+    )
+  }
 
   // 마지막 사용자 메시지에서 이벤트 ID 자동 추출 힌트
   const lastUser = rawMessages.filter((m) => m.role === 'user').pop()
@@ -283,7 +295,7 @@ tableData({
    - funnel.leads / visitReservations / reservations → 상담·예약·결제 단계 수치
    - byChannel.*.cpa_lead / cpa_reservation / cpa_contract → 단계별 CPA
    - byChannel.*.roas → 최종 ROAS
-   - topTrackingCodes.*.reservationROAS → 광고세트별 최종 결제 ROAS
+   - topTrackingCodes.*.contracts / contractROAS → 광고세트별 계약(결제) 건수·최종 결제 ROAS
 2. **전체 광고 시뮬레이션** — getTotalSummary / getChannelSummary / getDailyTrend / getCampaignPerformance / getCreativePerformance (광고 상단부만 — 리드·예약 없음)
 
 ## 🛠 도구 사용 순서
@@ -352,7 +364,7 @@ ${autoEventId ? `5. 🎯 현재 맥락에서 **이벤트 ID ${autoEventId}** 감
     roas                                          // 최종 ROAS (결제 매출 / 광고비)
   }
 - byChannel: Meta·TikTok·Google 등 채널별 풀 퍼널 (adSpend → leads → reservations → contracts)
-- topTrackingCodes: 광고세트별 — 리드수·예약수·CPA·최종 ROAS
+- topTrackingCodes: 광고세트별 — 리드수·예약수·계약(결제)수·CPA·최종 결제 ROAS(contractROAS)
 - dataSources: 각 데이터의 실·더미 여부`,
         inputSchema: z.object({
           eventId: z.string().describe('이벤트 ID. 예: "1042" (더블어스), "3550" ((주)굿리치)'),

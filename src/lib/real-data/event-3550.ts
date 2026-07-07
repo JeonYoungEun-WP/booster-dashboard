@@ -160,6 +160,27 @@ export function getEvent3550LeadDistribution(): Array<{
   }))
 }
 
+/**
+ * 이벤트 3550 트래킹코드별 **실측** 퍼널 (엑셀 상세 14행 직접 매핑).
+ * 재분배 로직 대신 이 값을 byTrackingCode 에 그대로 사용해야 정합성 보장.
+ *   - leads       = 전환(리드) E열   (합 124)
+ *   - reservations = 예약 H열        (합 27, 중간 단계)
+ *   - contracts   = 계약 J열         (합 2, gR8xPm21·tT4mP1x5 에 1건씩 · 매출 발생)
+ */
+export function getEvent3550TrackingCodePerformance(): Array<{
+  trackingCode: string
+  leads: number
+  reservations: number
+  contracts: number
+}> {
+  return AD_SETS.map((a) => ({
+    trackingCode: a.code,
+    leads: a.conversions,
+    reservations: a.visitReservations,
+    contracts: a.reservations,
+  }))
+}
+
 /** 이벤트 3550 에 할당할 리드 총 건수 (실 DB 제출 수 = 타임스탬프 개수 124). */
 export const EVENT_3550_LEAD_TOTAL = EVENT_3550_LEAD_COUNT
 
