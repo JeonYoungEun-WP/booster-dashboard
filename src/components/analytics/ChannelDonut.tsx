@@ -2,7 +2,8 @@
 
 import { useMemo } from 'react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
-import { CHANNEL_LABEL, type AdChannel } from '@/src/lib/ad-data'
+import { CHANNEL_LABEL, CHANNEL_COLOR, type AdChannel } from '@/src/lib/ad-data'
+import { fmtNumber, fmtKRWCompact, fmtRatioPct } from '@/src/lib/format'
 import { ChannelRadar } from './ChannelRadar'
 
 export interface ChannelDonutRow {
@@ -24,30 +25,11 @@ interface Props {
   rows: ChannelDonutRow[]
 }
 
-// 채널 고유 색
-const CHANNEL_COLOR: Record<string, string> = {
-  meta: '#1877F2',
-  tiktok: '#000000',
-  google: '#4285F4',
-  naver: '#03C75A',
-  kakao: '#FEE500',
-  karrot: '#FF7E1D',
-}
+// 채널 고유 색 — 정본은 ad-data 의 CHANNEL_COLOR. 정본에 없는 채널은 fallback 색상 순환.
 const FALLBACK_COLORS = ['#6c5ce7', '#f59e0b', '#10b981', '#ef4444', '#06b6d4', '#8b5cf6']
 
 function colorFor(channel: string, i: number): string {
-  return CHANNEL_COLOR[channel] ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length]
-}
-
-function fmtNumber(n: number): string {
-  return Math.round(n).toLocaleString('ko-KR')
-}
-function fmtKRW(n: number): string {
-  if (n >= 1_000_000) return `₩${(n / 1_000_000).toFixed(1)}M`
-  return '₩' + fmtNumber(n)
-}
-function fmtPct(ratio: number): string {
-  return `${(ratio * 100).toFixed(2)}%`
+  return CHANNEL_COLOR[channel as AdChannel] ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length]
 }
 
 interface MetricBarProps {
@@ -207,7 +189,7 @@ export function ChannelDonut({ rows }: Props) {
           title="광고비"
           subtitle="채널별 지출"
           rows={adSpendBars}
-          formatter={fmtKRW}
+          formatter={fmtKRWCompact}
           max={maxAdSpend}
         />
         {/* 채널 2+ → Radar 로 프로파일 비교 · 채널 1 → 기존 3 CVR 바 */}
@@ -228,21 +210,21 @@ export function ChannelDonut({ rows }: Props) {
               title="리드 전환율"
               subtitle="클릭 → 리드"
               rows={leadCvrBars}
-              formatter={fmtPct}
+              formatter={fmtRatioPct}
               max={maxLeadCvr}
             />
             <MetricBars
               title="예약 전환율"
               subtitle="리드 → 예약"
               rows={reservationCvrBars}
-              formatter={fmtPct}
+              formatter={fmtRatioPct}
               max={maxReservationCvr}
             />
             <MetricBars
               title="계약 전환율"
               subtitle="예약 → 계약"
               rows={contractCvrBars}
-              formatter={fmtPct}
+              formatter={fmtRatioPct}
               max={maxContractCvr}
             />
           </>

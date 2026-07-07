@@ -10,6 +10,7 @@
 
 import PptxGenJS from 'pptxgenjs'
 import type { EventAnalyticsResponse } from './event-analytics-service'
+import { fmtNumber, fmtKRW, fmtRatioPct } from './format'
 
 // ───── 브랜드 / 컬러 토큰 (boosterMAX 디자인 시스템)
 //    Source: call-convo-master design-guide
@@ -30,16 +31,6 @@ const COLOR_BG_LIGHT = 'F3F4F6'       // muted (HSL 220 10% 96%)
 const COLOR_SUCCESS = '22C55E'        // success (HSL 142 71% 45%)
 const COLOR_WARN = 'F59E0B'           // warning (HSL 38 92% 50%)
 const COLOR_SESSION = '3983E2'        // 일자별 추이 세션 라인 (HTML TrendChart 매치)
-
-function fmtKRW(n: number): string {
-  return '₩' + Math.round(n).toLocaleString('ko-KR')
-}
-function fmtNumber(n: number): string {
-  return Math.round(n).toLocaleString('ko-KR')
-}
-function fmtPct(ratio: number): string {
-  return `${(ratio * 100).toFixed(2)}%`
-}
 
 // 채널 한글명 매핑 (CHANNEL_LABEL import 쓰려 했으나 번들 사이즈 고려 간단 매핑)
 const CHANNEL_KO: Record<string, string> = {
@@ -277,7 +268,7 @@ export async function buildReportPptx({
         const convGood = s.cvr >= 0.5
         slide.addText([
           { text: `${s.prevLabel} → `, options: { color: COLOR_TEXT_MUTED } },
-          { text: fmtPct(s.cvr), options: { color: convGood ? COLOR_SUCCESS : 'E11D48', bold: true } },
+          { text: fmtRatioPct(s.cvr), options: { color: convGood ? COLOR_SUCCESS : 'E11D48', bold: true } },
         ], {
           x: x + 0.15, y: cardTop + 1.25, w: cardW - 0.3, h: 0.3,
           fontFace: BRAND_FONT, fontSize: 11,
@@ -591,7 +582,7 @@ export async function buildReportPptx({
           const cpaText = cpa && cpa > 0 ? fmtKRW(cpa) : '—'
           row.push({
             text: [
-              { text: fmtPct(cvr), options: { fontSize: 10, bold: true } },
+              { text: fmtRatioPct(cvr), options: { fontSize: 10, bold: true } },
               { text: `\n${cpaText}`, options: { fontSize: 8, color: COLOR_TEXT_MUTED } },
             ],
             options: { align: 'right' },
@@ -620,7 +611,7 @@ export async function buildReportPptx({
       [
         { text: 'ROAS', options: { bold: true, align: 'left', color: COLOR_TEXT_MUTED, fontSize: 10 } },
         ...channelRows.map<PptxGenJS.TableCell>((c) => (
-          { text: fmtPct(c.roas), options: { bold: true, align: 'right', colspan: 2, color: c.roas >= 1 ? COLOR_SUCCESS : COLOR_WARN } }
+          { text: fmtRatioPct(c.roas), options: { bold: true, align: 'right', colspan: 2, color: c.roas >= 1 ? COLOR_SUCCESS : COLOR_WARN } }
         )),
       ],
     ]
@@ -654,7 +645,7 @@ export async function buildReportPptx({
     })
     slide.addText([
       { text: '전체 ROAS ', options: { color: COLOR_TEXT_DARK } },
-      { text: fmtPct(totalROAS), options: { bold: true, color: totalROAS >= 1 ? COLOR_SUCCESS : COLOR_WARN } },
+      { text: fmtRatioPct(totalROAS), options: { bold: true, color: totalROAS >= 1 ? COLOR_SUCCESS : COLOR_WARN } },
     ], {
       x: rightX + 0.2 + ((rightW - 0.4) * 2) / 3, y: summaryY, w: (rightW - 0.4) / 3, h: 0.3,
       align: 'right',
@@ -695,7 +686,7 @@ export async function buildReportPptx({
         { text: fmtNumber(c.contracts), options: { align: 'right' } },
         { text: c.cpa_lead > 0 ? fmtKRW(c.cpa_lead) : '—', options: { align: 'right' } },
         {
-          text: fmtPct(c.contractROAS),
+          text: fmtRatioPct(c.contractROAS),
           options: {
             align: 'right',
             color: c.contractROAS >= 1 ? COLOR_SUCCESS : COLOR_WARN,
@@ -853,12 +844,12 @@ export async function buildReportPptx({
     const bullets = [
       `ROAS ${roasPct}% — ${roasJudge}`,
       topChannel
-        ? `최고 채널: ${CHANNEL_KO[topChannel.channel] ?? topChannel.channel} (ROAS ${fmtPct(topChannel.roas)}) → 예산 비중 확대 고려`
+        ? `최고 채널: ${CHANNEL_KO[topChannel.channel] ?? topChannel.channel} (ROAS ${fmtRatioPct(topChannel.roas)}) → 예산 비중 확대 고려`
         : '채널별 비교 데이터 없음',
       topCode
-        ? `최고 광고세트: ${topCode.trackingCode} — 광고비 ${fmtKRW(topCode.adSpend)} / ROAS ${fmtPct(topCode.contractROAS)}`
+        ? `최고 광고세트: ${topCode.trackingCode} — 광고비 ${fmtKRW(topCode.adSpend)} / ROAS ${fmtRatioPct(topCode.contractROAS)}`
         : '광고세트 데이터 없음',
-      `리드 → 예약 전환율 ${fmtPct(f.cvr_lead_to_visitReservation)} · 예약 → 계약 전환율 ${fmtPct(f.cvr_visitReservation_to_payment)}`,
+      `리드 → 예약 전환율 ${fmtRatioPct(f.cvr_lead_to_visitReservation)} · 예약 → 계약 전환율 ${fmtRatioPct(f.cvr_visitReservation_to_payment)}`,
       '[편집] 다음 스프린트 구체 액션 3개를 여기에 기재하세요.',
       '[편집] 리스크·가설 검증 항목을 여기에 기재하세요.',
     ]

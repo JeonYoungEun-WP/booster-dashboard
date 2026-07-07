@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { RefreshCw, FileText } from 'lucide-react'
+import { fmtNumber, fmtDuration } from '@/src/lib/format'
 import { DateRangePicker } from '@/src/components/ui/DateRangePicker'
 import { FunnelFlow } from '@/src/components/analytics/FunnelFlow'
 import { KpiGrid } from '@/src/components/analytics/KpiGrid'
@@ -85,14 +86,6 @@ interface ScopeAnalyticsResponse {
   includedEventIds: string[]
 }
 
-function fmtNumber(n: number): string { return Math.round(n).toLocaleString('ko-KR') }
-function fmtDuration(seconds: number): string {
-  const m = Math.floor(seconds / 60)
-  const s = Math.round(seconds % 60)
-  if (m === 0) return `${s}초`
-  return `${m}분 ${s}초`
-}
-
 export default function ScopeAnalyticsPage() {
   const router = useRouter()
   const params = useParams<{ scope: string; id: string }>()
@@ -117,14 +110,41 @@ export default function ScopeAnalyticsPage() {
   const [granularity, setGranularity] = useState<TrendGranularity>('day')
   const [reportOpen, setReportOpen] = useState(false)
 
-  // scope/id 변경 시 기간 재설정 (API 응답의 period 로 덮어쓰기)
-  useEffect(() => {
-    setStartDate('')
-    setEndDate('')
-  }, [scope, id])
+  // scope/id 가 바뀌면 이전 id 의 날짜로 선요청이 나가지 않도록 ref 로 추적한다.
+  // (예전엔 "날짜 리셋 effect" 와 "fetch effect" 가 분리돼 있어
+  //  [이전 기간+새 id 선요청 → 날짜 '' 리셋 재요청 → 응답 period 반영 재요청] 3연쇄가 발생했다)
+  const scopeKeyRef = useRef<string>('')
+  // 응답 period 를 날짜 state 에 반영할 때 그 값을 기록해 두고,
+  // 그로 인한 effect 재실행에서는 중복 fetch 를 건너뛴다.
+  const appliedPeriodRef = useRef<{ start: string; end: string } | null>(null)
 
   useEffect(() => {
     if (!scope || !id) return
+    let alive = true // 늦게 도착한 이전 응답이 최신 데이터를 덮어쓰지 않도록 방어
+
+    const scopeKey = `${scope}::${id}`
+    // scope/id 가 바뀐 직후라면: 낡은 날짜를 같은 렌더에서 비우고 이번 실행은 중단.
+    // 날짜가 '' 로 리셋되면 이 effect 가 다시 실행되며, 그때 fetch 가 1회 나간다.
+    if (scopeKeyRef.current !== scopeKey) {
+      scopeKeyRef.current = scopeKey
+      appliedPeriodRef.current = null
+      if (startDate !== '' || endDate !== '') {
+        setStartDate('')
+        setEndDate('')
+        return
+      }
+    }
+
+    // 방금 응답 period 를 날짜 state 에 반영해서 재실행된 경우엔 중복 fetch 를 건너뛴다.
+    if (
+      appliedPeriodRef.current &&
+      appliedPeriodRef.current.start === startDate &&
+      appliedPeriodRef.current.end === endDate
+    ) {
+      appliedPeriodRef.current = null
+      return
+    }
+
     setLoading(true)
     setError(null)
 
@@ -142,15 +162,20 @@ export default function ScopeAnalyticsPage() {
         return r.json() as Promise<ScopeAnalyticsResponse>
       })
       .then((cur) => {
+        if (!alive) return
         setData(cur)
-        // API 응답의 기본 기간을 state 에 반영 (UI 초기 선택값)
+        // API 응답의 기본 기간을 state 에 반영 (UI 초기 선택값).
+        // 이 반영으로 재실행되는 effect 는 위 appliedPeriodRef 가드에서 중복 fetch 를 막는다.
         if (!startDate && !endDate) {
+          appliedPeriodRef.current = { start: cur.period.startDate, end: cur.period.endDate }
           setStartDate(cur.period.startDate)
           setEndDate(cur.period.endDate)
         }
       })
-      .catch((e) => setError((e as Error).message))
-      .finally(() => setLoading(false))
+      .catch((e) => alive && setError((e as Error).message))
+      .finally(() => alive && setLoading(false))
+
+    return () => { alive = false }
   }, [scope, id, startDate, endDate, excludeTest, refreshTick, search])
 
   // ─── 파생 상태 ───

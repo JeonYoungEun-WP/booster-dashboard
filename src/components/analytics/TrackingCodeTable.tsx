@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
+import { fmtNumber, fmtKRW, fmtRatioPct } from '@/src/lib/format'
 
 export interface TrackingCodeRow {
   trackingCode: string
@@ -21,16 +22,6 @@ interface TrackingCodeTableProps {
   rows: TrackingCodeRow[]
   /** 기본 펼침 여부 — 미지정 시 접혀 있음 */
   defaultOpen?: boolean
-}
-
-function fmtNumber(n: number): string {
-  return Math.round(n).toLocaleString('ko-KR')
-}
-function fmtKRW(n: number): string {
-  return '₩' + fmtNumber(n)
-}
-function fmtPct(n: number): string {
-  return (n * 100).toFixed(1) + '%'
 }
 
 export function TrackingCodeTable({ rows, defaultOpen = false }: TrackingCodeTableProps) {
@@ -106,7 +97,7 @@ export function TrackingCodeTable({ rows, defaultOpen = false }: TrackingCodeTab
                   <td className={`py-3 pl-3 text-right tabular-nums ${
                     totals.contractROAS >= 1 ? 'text-emerald-700' : 'text-amber-700'
                   }`}>
-                    {totals.adSpend > 0 ? fmtPct(totals.contractROAS) : '—'}
+                    {totals.adSpend > 0 ? fmtRatioPct(totals.contractROAS, 1) : '—'}
                   </td>
                 </tr>
               )}
@@ -132,7 +123,7 @@ export function TrackingCodeTable({ rows, defaultOpen = false }: TrackingCodeTab
                   <td className={`py-3 pl-3 text-right tabular-nums font-semibold ${
                     r.contractROAS >= 1 ? 'text-emerald-600' : 'text-amber-600'
                   }`}>
-                    {r.adSpend > 0 ? fmtPct(r.contractROAS) : '—'}
+                    {r.adSpend > 0 ? fmtRatioPct(r.contractROAS, 1) : '—'}
                   </td>
                 </tr>
               ))}

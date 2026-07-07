@@ -29,16 +29,29 @@ export default function IntegrationsPage() {
   const [media, setMedia] = useState<IntegrationStatus[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticsIntegrationStatus[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let alive = true; // 늦게 도착한 이전 응답이 최신 상태를 덮어쓰지 않도록 방어
+    setLoading(true);
+    setError(null);
     fetch('/api/ad-performance?view=integrations')
-      .then((r) => r.json())
+      .then(async (r) => {
+        if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? `HTTP ${r.status}`);
+        return r.json();
+      })
       .then((d) => {
+        if (!alive) return;
         setMedia(d.integrations || []);
         setAnalytics(d.analytics || []);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch((e) => {
+        if (!alive) return;
+        setError((e as Error).message);
+        setLoading(false);
+      });
+    return () => { alive = false; };
   }, []);
 
   return (
@@ -53,6 +66,10 @@ export default function IntegrationsPage() {
 
         {loading ? (
           <div className="py-20 text-center text-muted-foreground">로딩 중...</div>
+        ) : error ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            연결 정보를 불러오지 못했습니다: {error}
+          </div>
         ) : (
           <>
             {/* 광고 매체 */}

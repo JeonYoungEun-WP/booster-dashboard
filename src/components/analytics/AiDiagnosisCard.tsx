@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { Sparkles, ArrowRight } from 'lucide-react'
 import { CHANNEL_LABEL, type AdChannel } from '@/src/lib/ad-data'
+import { fmtNumber, fmtKRW, fmtRatioPct } from '@/src/lib/format'
 
 interface ChannelRow {
   channel: AdChannel
@@ -45,16 +46,6 @@ interface Props {
   byTrackingCode: TrackingCodeRow[]
 }
 
-function fmtNumber(n: number): string {
-  return Math.round(n).toLocaleString('ko-KR')
-}
-function fmtKRW(n: number): string {
-  return Math.round(n).toLocaleString('ko-KR') + '원'
-}
-function fmtPct(n: number): string {
-  return `${(n * 100).toFixed(2)}%`
-}
-
 /**
  * 규칙 기반 5줄 AI 진단 생성.
  * - 핵심 성과 / 채널 효율 / Best 광고세트 / Worst 광고세트 / 개선 제안(액션 아이템)
@@ -70,7 +61,7 @@ function buildDiagnosisBullets({
   const core =
     `핵심 성과: 총 광고비 ${fmtKRW(funnel.adSpend)}, ${fmtNumber(funnel.leads)}건 전환(리드수) (CPA ${fmtKRW(funnel.cpa_lead)}), ` +
     `${fmtNumber(funnel.visitReservations)}건 방문예약 (CPA ${fmtKRW(funnel.cpa_visitReservation)}). ` +
-    `총 매출 ${fmtKRW(funnel.reservationRevenue)}으로 ROAS ${(funnel.trueROAS_estimated * 100).toFixed(2)}%를 기록했습니다.`
+    `총 매출 ${fmtKRW(funnel.reservationRevenue)}으로 ROAS ${fmtRatioPct(funnel.trueROAS_estimated)}를 기록했습니다.`
   bullets.push(core)
 
   // 2) 채널 효율 — ROAS 비교
@@ -80,7 +71,7 @@ function buildDiagnosisBullets({
     const bestName = CHANNEL_LABEL[best.channel] ?? best.channel
     const secondName = CHANNEL_LABEL[second.channel] ?? second.channel
     const compareText =
-      `채널 효율: ${bestName}이 ROAS ${fmtPct(best.roas)}로 ${secondName}(ROAS ${fmtPct(second.roas)})보다 ` +
+      `채널 효율: ${bestName}이 ROAS ${fmtRatioPct(best.roas)}로 ${secondName}(ROAS ${fmtRatioPct(second.roas)})보다 ` +
       (best.roas > second.roas * 1.3 ? '월등히 높은' : '더 높은') +
       ` 효율을 보였습니다. ` +
       `리드 CPA (${bestName} ${fmtKRW(best.cpa_lead)} vs ${secondName} ${fmtKRW(second.cpa_lead)}) 및 ` +
@@ -91,7 +82,7 @@ function buildDiagnosisBullets({
     bullets.push(compareText)
   } else if (channelsSorted.length === 1) {
     const only = channelsSorted[0]
-    bullets.push(`채널 효율: ${CHANNEL_LABEL[only.channel] ?? only.channel} 단독 운영 — ROAS ${fmtPct(only.roas)}, 리드 CPA ${fmtKRW(only.cpa_lead)}.`)
+    bullets.push(`채널 효율: ${CHANNEL_LABEL[only.channel] ?? only.channel} 단독 운영 — ROAS ${fmtRatioPct(only.roas)}, 리드 CPA ${fmtKRW(only.cpa_lead)}.`)
   } else {
     bullets.push('채널 효율: 채널별 비교 데이터 없음.')
   }
@@ -101,7 +92,7 @@ function buildDiagnosisBullets({
   const bestCode = validCodes.sort((a, b) => b.contractROAS - a.contractROAS)[0]
   if (bestCode) {
     bullets.push(
-      `Best 광고세트: '${bestCode.trackingCode}'가 ${fmtKRW(bestCode.adSpend)} 광고비로 리드 ${fmtNumber(bestCode.leads)}건, 예약 ${fmtNumber(bestCode.reservations)}건, 계약 ${fmtNumber(bestCode.contracts)}건 달성 (ROAS ${fmtPct(bestCode.contractROAS)}).`,
+      `Best 광고세트: '${bestCode.trackingCode}'가 ${fmtKRW(bestCode.adSpend)} 광고비로 리드 ${fmtNumber(bestCode.leads)}건, 예약 ${fmtNumber(bestCode.reservations)}건, 계약 ${fmtNumber(bestCode.contracts)}건 달성 (ROAS ${fmtRatioPct(bestCode.contractROAS)}).`,
     )
   } else {
     bullets.push('Best 광고세트: 유효 리드 발생 광고세트 없음.')

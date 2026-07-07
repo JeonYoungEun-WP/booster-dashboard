@@ -3,11 +3,7 @@
 interface Props {
   startDate: string;
   endDate: string;
-  compare?: boolean;
-  excludeToday?: boolean;
   onChange: (start: string, end: string) => void;
-  onCompareChange?: (v: boolean) => void;
-  onExcludeTodayChange?: (v: boolean) => void;
 }
 
 function today(offsetDays = 0): string {
@@ -58,8 +54,7 @@ const PRESETS: Preset[] = [
 
 export function DateRangePicker({
   startDate, endDate,
-  compare, excludeToday,
-  onChange, onCompareChange, onExcludeTodayChange,
+  onChange,
 }: Props) {
   const handlePreset = (p: Preset) => onChange(p.start(), p.end());
   return (
@@ -79,22 +74,6 @@ export function DateRangePicker({
           </button>
         ))}
       </div>
-      {(onCompareChange || onExcludeTodayChange) && (
-        <div className="flex items-center gap-3 ml-1 pl-3 border-l border-border text-xs">
-          {onCompareChange && (
-            <label className="flex items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground">
-              <input type="checkbox" checked={!!compare} onChange={(e) => onCompareChange(e.target.checked)} className="rounded" />
-              전기 대비
-            </label>
-          )}
-          {onExcludeTodayChange && (
-            <label className="flex items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground">
-              <input type="checkbox" checked={!!excludeToday} onChange={(e) => onExcludeTodayChange(e.target.checked)} className="rounded" />
-              오늘 제외
-            </label>
-          )}
-        </div>
-      )}
     </div>
   );
 }

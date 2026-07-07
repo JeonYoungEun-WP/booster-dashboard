@@ -132,17 +132,33 @@ export default function CreativesPage() {
   const [formats, setFormats] = useState<CreativeFormat[]>(ALL_FORMATS);
   const [creatives, setCreatives] = useState<CreativePerformance[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>('cost');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [viewMode, setViewMode] = useState<ViewMode>('card');
 
   useEffect(() => {
+    let alive = true; // 늦게 도착한 이전 응답이 최신 상태를 덮어쓰지 않도록 방어
     setLoading(true);
+    setError(null);
     const chQuery = channels.length === ALL_CHANNELS.length ? '' : `&channels=${channels.join(',')}`;
     fetch(`/api/ad-performance?view=creatives&startDate=${startDate}&endDate=${endDate}${chQuery}`)
-      .then((r) => r.json())
-      .then((d) => { setCreatives(d.creatives || []); setLoading(false); })
-      .catch(() => setLoading(false));
+      .then(async (r) => {
+        if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? `HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((d) => {
+        if (!alive) return;
+        setCreatives(d.creatives || []);
+        setLoading(false);
+      })
+      .catch((e) => {
+        if (!alive) return;
+        setError((e as Error).message);
+        setCreatives([]);
+        setLoading(false);
+      });
+    return () => { alive = false; };
   }, [startDate, endDate, channels]);
 
   const filtered = useMemo(() => {
@@ -330,6 +346,10 @@ export default function CreativesPage() {
         {/* 본문 */}
         {loading ? (
           <div className="py-20 text-center text-muted-foreground">로딩 중...</div>
+        ) : error ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            소재를 불러오지 못했습니다: {error}
+          </div>
         ) : sorted.length === 0 ? (
           <div className="py-20 text-center text-muted-foreground">조건에 맞는 소재가 없습니다</div>
         ) : viewMode === 'card' ? (

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { ChannelIcon } from '@/src/components/ui/ChannelIcon'
 import { CHANNEL_LABEL, type AdChannel } from '@/src/lib/ad-data'
+import { fmtNumber, fmtKRW, fmtKRWCompact, fmtRatioPct } from '@/src/lib/format'
 import type { FunnelStageRow } from './FunnelMetricsTable'
 
 export interface ChannelFunnelGroup {
@@ -34,22 +35,6 @@ const ICONS: Record<string, LucideIcon> = {
 }
 
 const GROUPED_LABELS = new Set(['리드', '예약', '방문예약', '계약', '결제'])
-
-function fmtNumber(n: number): string {
-  return Math.round(n).toLocaleString('ko-KR')
-}
-function fmtKRWFull(n: number): string {
-  return '₩' + Math.round(n).toLocaleString('ko-KR')
-}
-/** 컴팩트 포맷 — 넓이 절약용 */
-function fmtKRWCompact(n: number): string {
-  if (n >= 1_000_000) return `₩${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 10_000) return `₩${Math.round(n / 1000).toLocaleString('ko-KR')}K`
-  return '₩' + Math.round(n).toLocaleString('ko-KR')
-}
-function fmtPct(n: number): string {
-  return `${(n * 100).toFixed(1)}%`
-}
 
 export function ChannelFunnelCompareTable({
   groups,
@@ -135,7 +120,7 @@ export function ChannelFunnelCompareTable({
                         <td className="py-3 pl-2 pr-2 text-right tabular-nums">
                           {row.conversionRate !== undefined ? (
                             <div>
-                              <div className="text-sm font-medium">{fmtPct(row.conversionRate)}</div>
+                              <div className="text-sm font-medium">{fmtRatioPct(row.conversionRate, 1)}</div>
                               {row.costPerAction !== undefined && row.costPerAction > 0 ? (
                                 <div className="text-xs text-muted-foreground">{fmtKRWCompact(row.costPerAction)}</div>
                               ) : (
@@ -162,7 +147,7 @@ export function ChannelFunnelCompareTable({
                   colSpan={2}
                   className="py-2.5 px-2 text-right tabular-nums text-base font-semibold border-l border-border/60"
                 >
-                  {fmtKRWFull(g.adSpend)}
+                  {fmtKRW(g.adSpend)}
                 </td>
               ))}
             </tr>
@@ -174,7 +159,7 @@ export function ChannelFunnelCompareTable({
                   colSpan={2}
                   className="py-2.5 px-2 text-right tabular-nums text-base font-semibold border-l border-border/60"
                 >
-                  {fmtKRWFull(g.revenue)}
+                  {fmtKRW(g.revenue)}
                 </td>
               ))}
             </tr>
@@ -188,7 +173,7 @@ export function ChannelFunnelCompareTable({
                     g.roas >= 1 ? 'text-emerald-600' : 'text-amber-600'
                   }`}
                 >
-                  {fmtPct(g.roas)}
+                  {fmtRatioPct(g.roas, 1)}
                 </td>
               ))}
             </tr>

@@ -5,7 +5,8 @@ import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis,
   ResponsiveContainer, Tooltip, Legend,
 } from 'recharts'
-import { CHANNEL_LABEL, type AdChannel } from '@/src/lib/ad-data'
+import { CHANNEL_LABEL, CHANNEL_COLOR, type AdChannel } from '@/src/lib/ad-data'
+import { fmtRatioPct } from '@/src/lib/format'
 
 export interface ChannelRadarRow {
   channel: string               // 'meta' | 'tiktok' | ...
@@ -20,25 +21,16 @@ interface Props {
   height?: number
 }
 
-const CHANNEL_COLOR: Record<string, string> = {
-  meta: '#1877F2',
-  tiktok: '#000000',
-  google: '#4285F4',
-  naver: '#03C75A',
-  kakao: '#FEE500',
-  karrot: '#FF7E1D',
-}
+// 채널 고유 색 — 정본은 ad-data 의 CHANNEL_COLOR. 정본에 없는 채널은 fallback 색상 순환.
 const FALLBACK_COLORS = ['#6c5ce7', '#f59e0b', '#10b981', '#ef4444', '#06b6d4', '#8b5cf6']
 
 function colorFor(channel: string, i: number): string {
-  return CHANNEL_COLOR[channel] ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length]
+  return CHANNEL_COLOR[channel as AdChannel] ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length]
 }
 
-function fmtPct(v: number): string {
-  return `${(v * 100).toFixed(2)}%`
-}
+/** ROAS 는 비율 입력·소수 없이 정수 % 표기 (기존 표시 유지) */
 function fmtRoas(v: number): string {
-  return `${(v * 100).toFixed(0)}%`
+  return fmtRatioPct(v, 0)
 }
 
 const METRICS: Array<{
@@ -46,9 +38,9 @@ const METRICS: Array<{
   label: string
   fmt: (v: number) => string
 }> = [
-  { key: 'cvrLead',        label: '리드 전환',    fmt: fmtPct },
-  { key: 'cvrReservation', label: '예약 전환',    fmt: fmtPct },
-  { key: 'cvrContract',    label: '계약 전환',    fmt: fmtPct },
+  { key: 'cvrLead',        label: '리드 전환',    fmt: fmtRatioPct },
+  { key: 'cvrReservation', label: '예약 전환',    fmt: fmtRatioPct },
+  { key: 'cvrContract',    label: '계약 전환',    fmt: fmtRatioPct },
   { key: 'roas',           label: 'ROAS',         fmt: fmtRoas },
 ]
 

@@ -11,6 +11,7 @@
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import type { EventAnalyticsResponse } from './event-analytics-service'
+import { fmtNumber, fmtKRW, fmtRatioPct } from './format'
 
 const BRAND_NAME = 'boosterMAX'
 const BRAND_FONT = 'Pretendard, system-ui, sans-serif'
@@ -25,16 +26,6 @@ const COLOR_BORDER = '#E1E4E9'
 const COLOR_BG_LIGHT = '#F3F4F6'
 const COLOR_SUCCESS = '#22C55E'
 const COLOR_WARN = '#F59E0B'
-
-function fmtKRW(n: number): string {
-  return '₩' + Math.round(n).toLocaleString('ko-KR')
-}
-function fmtNumber(n: number): string {
-  return Math.round(n).toLocaleString('ko-KR')
-}
-function fmtPct(ratio: number): string {
-  return `${(ratio * 100).toFixed(2)}%`
-}
 
 const CHANNEL_KO: Record<string, string> = {
   google: 'Google Ads',
@@ -198,7 +189,7 @@ function renderFunnel(data: EventAnalyticsResponse, total: number, periodLabel: 
               <div style="font-size: 52px; font-weight: 800; color: ${COLOR_TEXT_DARK}; margin-top: 10px; letter-spacing: -1px; line-height: 1;">${fmtNumber(s.value)}</div>
               ${s.cvr !== null
                 ? `<div style="font-size: 15px; margin-top: 12px; color: ${convGood ? COLOR_SUCCESS : '#E11D48'};">
-                    <span style="color: ${COLOR_TEXT_MUTED};">${escapeHtml(s.prevLabel ?? '')} →</span> ${fmtPct(s.cvr)}
+                    <span style="color: ${COLOR_TEXT_MUTED};">${escapeHtml(s.prevLabel ?? '')} →</span> ${fmtRatioPct(s.cvr)}
                   </div>`
                 : `<div style="font-size: 15px; margin-top: 12px; color: ${COLOR_TEXT_MUTED};">시작</div>`}
               ${s.cpu !== null && s.cpu > 0
@@ -381,7 +372,7 @@ function renderChannelTable(data: EventAnalyticsResponse, total: number, periodL
                     <td style="padding: 10px 6px; text-align: right; border-bottom: 1px solid ${COLOR_BORDER}; border-left: 1px solid ${COLOR_BORDER}; font-weight: 700; font-size: 14px;">${fmtNumber(v)}</td>
                     <td style="padding: 10px 6px; text-align: right; border-bottom: 1px solid ${COLOR_BORDER}; font-size: 11px;">
                       ${cvr !== null
-                        ? `<div style="font-weight: 600;">${fmtPct(cvr)}</div><div style="color: ${COLOR_TEXT_MUTED}; font-size: 10px;">${cpa && cpa > 0 ? fmtKRW(cpa) : '—'}</div>`
+                        ? `<div style="font-weight: 600;">${fmtRatioPct(cvr)}</div><div style="color: ${COLOR_TEXT_MUTED}; font-size: 10px;">${cpa && cpa > 0 ? fmtKRW(cpa) : '—'}</div>`
                         : `<span style="color: ${COLOR_TEXT_MUTED};">—</span>`}
                     </td>
                   `
@@ -400,14 +391,14 @@ function renderChannelTable(data: EventAnalyticsResponse, total: number, periodL
             </tr>
             <tr>
               <td style="padding: 10px 8px; font-weight: 700; font-size: 13px; color: ${COLOR_TEXT_MUTED};">ROAS</td>
-              ${channels.map((c) => `<td colspan="2" style="padding: 10px 8px; text-align: right; border-left: 1px solid ${COLOR_BORDER}; font-weight: 800; color: ${c.roas >= 1 ? COLOR_SUCCESS : COLOR_WARN};">${fmtPct(c.roas)}</td>`).join('')}
+              ${channels.map((c) => `<td colspan="2" style="padding: 10px 8px; text-align: right; border-left: 1px solid ${COLOR_BORDER}; font-weight: 800; color: ${c.roas >= 1 ? COLOR_SUCCESS : COLOR_WARN};">${fmtRatioPct(c.roas)}</td>`).join('')}
             </tr>
           </tfoot>
         </table>
         <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid ${COLOR_BORDER}; display: flex; justify-content: space-between; font-size: 13px;">
           <div>합계 광고비 <strong>${fmtKRW(sumAdSpend)}</strong></div>
           <div>합계 매출 <strong>${fmtKRW(sumRevenue)}</strong></div>
-          <div>전체 ROAS <strong style="color: ${totalROAS >= 1 ? COLOR_SUCCESS : COLOR_WARN};">${fmtPct(totalROAS)}</strong></div>
+          <div>전체 ROAS <strong style="color: ${totalROAS >= 1 ? COLOR_SUCCESS : COLOR_WARN};">${fmtRatioPct(totalROAS)}</strong></div>
         </div>
       </div>
     </div>
@@ -463,7 +454,7 @@ function renderTrackingCodeTable(data: EventAnalyticsResponse, total: number, pe
             <td style="padding: 12px 14px; border-bottom: 2px solid ${COLOR_BORDER}; text-align: right;">${fmtNumber(sumReservations)}</td>
             <td style="padding: 12px 14px; border-bottom: 2px solid ${COLOR_BORDER}; text-align: right;">${fmtNumber(sumContracts)}</td>
             <td style="padding: 12px 14px; border-bottom: 2px solid ${COLOR_BORDER}; text-align: right;">${totalCpaLead > 0 ? fmtKRW(totalCpaLead) : '—'}</td>
-            <td style="padding: 12px 14px; border-bottom: 2px solid ${COLOR_BORDER}; text-align: right; color: ${totalROAS >= 1 ? COLOR_SUCCESS : COLOR_WARN};">${fmtPct(totalROAS)}</td>
+            <td style="padding: 12px 14px; border-bottom: 2px solid ${COLOR_BORDER}; text-align: right; color: ${totalROAS >= 1 ? COLOR_SUCCESS : COLOR_WARN};">${fmtRatioPct(totalROAS)}</td>
           </tr>
           ${codes.map((c) => `
             <tr>
@@ -475,7 +466,7 @@ function renderTrackingCodeTable(data: EventAnalyticsResponse, total: number, pe
               <td style="padding: 11px 14px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right;">${fmtNumber(c.reservations)}</td>
               <td style="padding: 11px 14px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right;">${fmtNumber(c.contracts)}</td>
               <td style="padding: 11px 14px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right;">${c.cpa_lead > 0 ? fmtKRW(c.cpa_lead) : '—'}</td>
-              <td style="padding: 11px 14px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right; font-weight: 700; color: ${c.contractROAS >= 1 ? COLOR_SUCCESS : COLOR_WARN};">${fmtPct(c.contractROAS)}</td>
+              <td style="padding: 11px 14px; border-bottom: 1px solid ${COLOR_BORDER}; text-align: right; font-weight: 700; color: ${c.contractROAS >= 1 ? COLOR_SUCCESS : COLOR_WARN};">${fmtRatioPct(c.contractROAS)}</td>
             </tr>
           `).join('')}
         </tbody>
@@ -705,12 +696,12 @@ function renderActionItems(data: EventAnalyticsResponse, total: number, periodLa
   const bullets: string[] = [
     `ROAS ${roasPct}% — ${roasJudge}`,
     topChannel
-      ? `최고 채널: ${CHANNEL_KO[topChannel.channel] ?? topChannel.channel} (ROAS ${fmtPct(topChannel.roas)}) → 예산 비중 확대 고려`
+      ? `최고 채널: ${CHANNEL_KO[topChannel.channel] ?? topChannel.channel} (ROAS ${fmtRatioPct(topChannel.roas)}) → 예산 비중 확대 고려`
       : '채널별 비교 데이터 없음',
     topCode
-      ? `최고 광고세트: ${topCode.trackingCode} — 광고비 ${fmtKRW(topCode.adSpend)} / ROAS ${fmtPct(topCode.contractROAS)}`
+      ? `최고 광고세트: ${topCode.trackingCode} — 광고비 ${fmtKRW(topCode.adSpend)} / ROAS ${fmtRatioPct(topCode.contractROAS)}`
       : '광고세트 데이터 없음',
-    `리드 → 예약 전환율 ${fmtPct(f.cvr_lead_to_visitReservation)} · 예약 → 계약 전환율 ${fmtPct(f.cvr_visitReservation_to_payment)}`,
+    `리드 → 예약 전환율 ${fmtRatioPct(f.cvr_lead_to_visitReservation)} · 예약 → 계약 전환율 ${fmtRatioPct(f.cvr_visitReservation_to_payment)}`,
     '[편집] 다음 스프린트 구체 액션 3개를 여기에 기재하세요.',
     '[편집] 리스크·가설 검증 항목을 여기에 기재하세요.',
   ]

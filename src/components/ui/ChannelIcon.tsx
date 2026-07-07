@@ -66,14 +66,3 @@ export function ChannelIcon({ channel, size = 16, className }: Props) {
       )
   }
 }
-
-/**
- * 작은 circle fallback — 아이콘 대신 색상 배지 쓸 때.
- */
-export function ChannelDot({ channel, size = 8 }: { channel: AdChannel; size?: number }) {
-  const color: Record<AdChannel, string> = {
-    google: '#4285F4', meta: '#1877F2', naver: '#03C75A', kakao: '#FEE500',
-    tiktok: '#000000', karrot: '#FF7E36',
-  }
-  return <span className="inline-block rounded-full shrink-0" style={{ width: size, height: size, backgroundColor: color[channel] }} />
-}

@@ -227,7 +227,7 @@ export function AdAiQueryBox() {
           const text = getTextContent(msg.parts);
           const charts = getCharts(msg.parts);
           const tables = getTables(msg.parts);
-          const hasToolCalls = msg.parts.some(p => p.type === 'tool-invocation');
+          const hasToolCalls = msg.parts.some(p => p.type.startsWith('tool-') || p.type === 'dynamic-tool');
           const isThinking = hasToolCalls && !text;
 
           return (

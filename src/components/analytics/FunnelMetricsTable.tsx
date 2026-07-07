@@ -4,6 +4,7 @@ import type { LucideIcon } from 'lucide-react'
 import { Eye, MousePointerClick, Activity, UserPlus, CalendarCheck, FileSignature } from 'lucide-react'
 import { ChannelIcon } from '@/src/components/ui/ChannelIcon'
 import { CHANNEL_LABEL, type AdChannel } from '@/src/lib/ad-data'
+import { fmtNumber, fmtKRW, fmtRatioPct } from '@/src/lib/format'
 
 export interface FunnelStageRow {
   label: string                    // '노출' | '클릭' | '세션' | '리드' | '예약' | '계약'
@@ -51,16 +52,6 @@ const SOURCE_BADGE: Record<FunnelStageRow['source'], { label: string; cls: strin
 
 // 전환·획득 지표인 "입력 그룹" (하이라이트 배경) — 리드/예약/계약 행
 const GROUPED_LABELS = new Set(['리드', '예약', '방문예약', '계약', '결제'])
-
-function fmtNumber(n: number): string {
-  return Math.round(n).toLocaleString('ko-KR')
-}
-function fmtKRW(n: number): string {
-  return '₩' + fmtNumber(n)
-}
-function fmtPct(n: number): string {
-  return `${(n * 100).toFixed(2)}%`
-}
 
 export function FunnelMetricsTable({
   rows, adSpend, revenue, roas,
@@ -120,7 +111,7 @@ export function FunnelMetricsTable({
                   <td className="py-3.5 px-3 text-right tabular-nums">
                     {r.conversionRate !== undefined ? (
                       <div>
-                        <div className="text-base font-medium text-foreground">{fmtPct(r.conversionRate)}</div>
+                        <div className="text-base font-medium text-foreground">{fmtRatioPct(r.conversionRate)}</div>
                         {r.prevLabel && (
                           <div className="text-xs text-muted-foreground">{r.prevLabel} → {r.label}</div>
                         )}
@@ -160,7 +151,7 @@ export function FunnelMetricsTable({
         <div className="ml-auto text-right">
           <div className="text-sm text-muted-foreground">ROAS</div>
           <div className={`text-lg font-semibold tabular-nums mt-0.5 ${roas >= 1 ? 'text-emerald-600' : 'text-amber-600'}`}>
-            {fmtPct(roas)}
+            {fmtRatioPct(roas)}
           </div>
         </div>
       </div>

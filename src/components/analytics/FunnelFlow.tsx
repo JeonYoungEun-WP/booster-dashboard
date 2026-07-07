@@ -1,6 +1,7 @@
 'use client'
 
 import { SourceBadge, type DataSource } from './KpiGrid'
+import { fmtNumber, fmtKRW, fmtRatioPct } from '@/src/lib/format'
 
 export interface FunnelStage {
   label: string
@@ -17,16 +18,6 @@ interface FunnelFlowProps {
   averageOrderValue: number   // 객단가 (추정)
   reservationRevenue: number
   finalStageLabel?: string
-}
-
-function fmtNumber(n: number): string {
-  return Math.round(n).toLocaleString('ko-KR')
-}
-function fmtKRW(n: number): string {
-  return '₩' + fmtNumber(n)
-}
-function fmtPct(ratio: number): string {
-  return (ratio * 100).toFixed(2) + '%'
 }
 
 export function FunnelFlow({
@@ -60,7 +51,7 @@ export function FunnelFlow({
                 <p className={`text-sm mt-1.5 ${
                   convGood ? 'text-emerald-600' : 'text-rose-600'
                 }`}>
-                  <span className="text-muted-foreground">{prev.label} →</span> {fmtPct(conv)}
+                  <span className="text-muted-foreground">{prev.label} →</span> {fmtRatioPct(conv)}
                 </p>
               ) : (
                 <p className="text-sm mt-1.5 text-muted-foreground">시작</p>
@@ -113,7 +104,7 @@ export function FunnelFlow({
             <SourceBadge source="dummy" />
           </div>
           <p className={`text-3xl font-bold ${trueROAS >= 1 ? 'text-emerald-700' : 'text-amber-700'}`}>
-            {(trueROAS * 100).toFixed(1)}%
+            {fmtRatioPct(trueROAS, 1)}
           </p>
         </div>
       </div>

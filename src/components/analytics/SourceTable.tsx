@@ -1,5 +1,7 @@
 'use client'
 
+import { fmtNumber } from '@/src/lib/format'
+
 interface SourceRow {
   source: string
   medium: string
@@ -11,10 +13,6 @@ interface SourceRow {
 interface SourceTableProps {
   rows: SourceRow[]
   unavailableReason?: string
-}
-
-function fmtNumber(n: number): string {
-  return Math.round(n).toLocaleString('ko-KR')
 }
 
 export function SourceTable({ rows, unavailableReason }: SourceTableProps) {

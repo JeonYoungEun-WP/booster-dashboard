@@ -75,7 +75,7 @@ export function MobileTabBar() {
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-white/95 backdrop-blur">
       <div className="flex">
-        {items.slice(0, 5).map((item) => {
+        {items.map((item) => {
           const Icon = item.icon
           const active = isActive(pathname, item.href)
           return (
